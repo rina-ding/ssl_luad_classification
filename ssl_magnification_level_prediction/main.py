@@ -65,7 +65,7 @@ class TrainModel:
         model = MagLevelModel(self.num_classes).to(self.device)
         optimizer = optim.Adam(model.parameters(), lr=lr_rate, weight_decay=1e-4)
         criterion = nn.CrossEntropyLoss()
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, verbose=True)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, verbose=True)
         # Varibles to track
         train_losses, val_losses = [], []
         metrics = {'accuracy': {0: [], 1: [], 2: [], 3: []},
@@ -94,7 +94,6 @@ class TrainModel:
                 optimizer.step()
                 running_train_loss += float(loss.item()) * images.size(0)
                 epoch_loss.append(float(loss.item() * images.size(0)))
-            scheduler.step(np.mean(epoch_loss))
 
             # Validation loop
             with torch.no_grad():
@@ -115,7 +114,8 @@ class TrainModel:
             avg_train_loss = running_train_loss / len(trainloader)
             avg_val_loss = running_val_loss / len(validloader)
             cnf_matrix = cm(y_truth, y_prediction, labels=[0, 1, 2, 3])
-            print(cnf_matrix)
+            scheduler.step(avg_val_loss)
+
             
             # Compute evaluations
             FP = cnf_matrix.sum(axis=0) - np.diag(cnf_matrix)

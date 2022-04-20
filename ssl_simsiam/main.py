@@ -66,7 +66,7 @@ class TrainModel:
         model = SimSiam().to(self.device)
         lr_rate = lr_rate * self.batch / 256
         optimizer = optim.Adam(model.parameters(), lr=lr_rate, weight_decay=1e-4)
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, verbose=True)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, verbose=True)
         # Varibles to track
         train_losses, val_losses = [], [], []
         valid_loss_min = np.Inf
@@ -92,7 +92,6 @@ class TrainModel:
                 running_train_loss += float(loss.item()) 
                 epoch_loss.append(float(loss.item() * image1.size(0)))
 
-            scheduler.step(np.mean(epoch_loss))
             # Validation loop
             with torch.no_grad():
                 model.eval()
@@ -109,8 +108,7 @@ class TrainModel:
             # Calculate average losses
             avg_train_loss = running_train_loss / len(trainloader)
             avg_val_loss = running_val_loss / len(validloader)
-            print('Average val loss ', avg_val_loss)
-            print(len(validloader))
+            scheduler.step(avg_val_loss)
             
             # Append losses and track metrics
             train_losses.append(avg_train_loss)

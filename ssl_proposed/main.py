@@ -56,7 +56,7 @@ class TrainModel:
         model = ModifiedResNet(self.num_classes).to(self.device)
         optimizer = optim.Adam(model.parameters(), lr=lr_rate, weight_decay=1e-4)
         criterion = nn.BCEWithLogitsLoss()
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, verbose=True)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, verbose=True)
         # Varibles to track
         train_losses, val_losses = [], []
         accuracy_list, sensitivity_list, specificity_list = [], [], []
@@ -102,7 +102,7 @@ class TrainModel:
             avg_train_loss = running_train_loss / len(trainloader)
             avg_val_loss = running_val_loss / len(validloader)
             cnf_matrix = cm(y_truth, y_prediction, labels=[0, 1])
-            print(cnf_matrix)
+            scheduler.step(avg_val_loss)
             
             # Compute evaluations
             total=sum(sum(cnf_matrix))
