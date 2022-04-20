@@ -22,28 +22,23 @@ Proposed:
   learning rate = 0.0001, 
   batch size = 32, 
   dropout = 0.2, 
-  optimizer = Adam with weight decay 1e-4, 
-  early stopping patience = 5 epochs
   
 Tile magnification level prediction: 
   learning rate = 0.0001, 
   batch size = 32, 
   dropout = 0.3, 
-  optimizer = Adam with weight decay 1e-4, 
-  early stopping patience = 5 epochs
   
 Simsiam: 
   learning rate = 0.01 * batch size / 256 = 0.005, 
   batch size = 128, 
-  optimizer = Adam with weight decay 1e-4, 
-  early stopping patience = 5 epochs
 
 Downstream:
   learning rate = 0.0001, 
   batch size = 16, 
   dropout = 0.2, 
+
+For all: 
+  learning rate reduces by 0.1 if validation loss does not decrease for 5 epochs,
   optimizer = Adam with weight decay 1e-4, 
   early stopping patience = 5 epochs
-
-For all: learning rate reduces by 0.1 if validation loss does not decrease for 5 epochs
 ```
