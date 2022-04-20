@@ -1,7 +1,7 @@
 # ssl_luad_classification
 Self-Supervised Learning for Histopathologic Subtype Classification
 
-We propose a pretext task that predicts whether an image cropped at a higher magnification level is contained in another image cropped at a lower magnification level. We hypothesize that this task induces the model to learn to distinguish different structures presented in WSIs, and thus benefit the downstream classification where those structures are also present.
+In computational pathology, fully-supervised convolutional neural networks have been shown to perform well on tasks such as histology segmentation and classification but require large amounts of expert-annotated labels. In this work, we propose a self-supervised learning pretext task that utilizes the multi-resolution nature of whole slide images to reduce labeling effort. Given a pair of image tiles cropped at different magnification levels, our model predicts whether one tile is contained in the other. We hypothesize that this task induces the model to learn to distinguish different structures presented in the images and thus benefit the downstream classification. The potential of our method was shown in downstream classification of lung adenocarcinomas histologic subtypes using H\&E-images from the National Lung Screening Trial.
 
 ## Directory structure
 ```
