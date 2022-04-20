@@ -240,7 +240,7 @@ if __name__ == "__main__":
     num_epcohs = 100
     batches = 16
     learning_rate = 0.0001
-    num_classes = 6
+    num_classes = 5
     test_f1_scores = []
     root = ''
     for fold_index in range(5):
