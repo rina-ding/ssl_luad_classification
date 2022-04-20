@@ -40,5 +40,5 @@ Downstream:
 For all: 
   learning rate reduces by 0.1 if validation loss does not decrease for 5 epochs,
   optimizer = Adam with weight decay 1e-4, 
-  early stopping patience = 5 epochs
+  100 epochs, early stopping patience = 5 epochs
 ```
