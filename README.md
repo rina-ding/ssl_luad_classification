@@ -1,6 +1,8 @@
 # ssl_luad_classification
 Self-Supervised Learning for Histopathologic Subtype Classification
 
+We propose a pretext task that predicts whether an image cropped at a higher magnification level is contained in another image cropped at a lower magnification level. We hypothesize that this task induces the model to learn to distinguish different structures presented in WSIs, and thus benefit the downstream classification where those structures are also present.
+
 ## Directory structure
 ```
 ssl_proposed: contains the implementation for proposed pretext task
