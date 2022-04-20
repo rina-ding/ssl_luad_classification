@@ -7,9 +7,16 @@ In computational pathology, fully-supervised convolutional neural networks have 
 
 
 ## Directory structure
+
+- ssl_proposed: contains the implementation for proposed pretext task
+- ssl_magnification_level_prediction: contains the implementation for an existing pretext task that predicts the magnification level of an image tile
+- ssl_simsiam: contains the implementation for one of the state-of-the-art contrastive learning method SimSiam
+- downstream: contains the implementation for the downstream classification task
+
+## Model parameters
+
 ```
-ssl_proposed: contains the implementation for proposed pretext task
-ssl_magnification_level_prediction: contains the implementation for an existing pretext task that predicts the magnification level of an image tile
-ssl_simsiam: contains the implementation for one of the state-of-the-art contrastive learning method SimSiam
-downstream: contains the implementation for the downstream classification task
+Proposed: learning rate = 0.0001, batch size = 32, dropout = 0.2, optimizer = Adam with weight decay 1e-4, early stopping patience = 5 epochs
+Tile magnification level prediction: learning rate = 0.0001, batch size = 32, dropout = 0.3, optimizer = Adam with weight decay 1e-4, early stopping patience = 5 epochs
+
 ```
