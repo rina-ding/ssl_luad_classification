@@ -65,7 +65,7 @@ class TrainModel:
 
         # Training loop
         epoch = 0
-        while tolerance_count <= 2 and epoch <= self.epochs:
+        while tolerance_count <= 5 and epoch <= self.epochs:
             print("-"*40)
             epoch += 1
             print('Epoch ', epoch)
