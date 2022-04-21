@@ -13,6 +13,7 @@ ssl_proposed: contains the implementation for proposed pretext task
 ssl_magnification_level_prediction: contains the implementation for an existing pretext task that predicts the magnification level of an image tile
 ssl_simsiam: contains the implementation for one of the state-of-the-art contrastive learning method SimSiam
 downstream: contains the implementation for the downstream classification task
+preprocessing: code to generate proposed image pairs of low and high magnification levels from whole slide images
 ```
 
 ## Model parameters
