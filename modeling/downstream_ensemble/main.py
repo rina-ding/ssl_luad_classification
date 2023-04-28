@@ -197,9 +197,9 @@ if __name__ == "__main__":
     test_f1_scores = []
     for fold_index in range(5):
         test_images = 'path_to_test_images'
-        ssl1_model_path = 'ssl1'
-        ssl2_model_path = 'ssl2'
-        ssl3_model_path = 'ssl3'
+        ssl1_model_path = 'ssl1_model_weights'
+        ssl2_model_path = 'ssl2_model_weights'
+        ssl3_model_path = 'ssl3_model_weights'
 
         train_obj = TrainModel(num_classes, num_epcohs, batches, fold_index)
         test_f1_score = train_obj.runtestset(test_images, ssl1_model_path, ssl2_model_path,ssl3_model_path, fold_index)

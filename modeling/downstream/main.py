@@ -98,7 +98,7 @@ class TrainModel:
         model = ModifiedResNet(self.num_classes, self.device, NUM_CHANNEL).to(self.device)
 
         # # Self supervised pretraining weights
-        weights = torch.load(os.path.join('/workspace/modeling/self_training_magnification_relationship/saved_models', 'self_trained_4_classes.pth'), map_location=self.device)
+        weights = torch.load(os.path.join('path_to_model'), map_location=self.device)
         model.load_state_dict({'backbone.' + k[0:]:v for k, v in weights.items()}, strict=False)
        
         optimizer = optim.Adam(model.parameters(), lr=self.learning_rate, weight_decay=1e-4)
