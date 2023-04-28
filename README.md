@@ -1,6 +1,8 @@
 # ssl_luad_classification
 Self-Supervised Learning for Histopathologic Subtype Classification
 
+Lung adenocarcinoma (LUAD) is a morphologically heterogeneous disease with five different histologic subtypes. Fully supervised convolutional neural networks can improve the accuracy and reduce subjectivity of LUAD histologic subtyping using hematoxylin and eosin-stained whole slide images (WSIs). However, the annotation process is time consuming and labor intensive. In this work, we propose three self-supervised learning (SSL) pretext tasks to reduce labeling effort. These tasks not only leverage the multi-resolution nature of the H&E WSIs but also explicitly consider the relevance to the downstream task of classifying the LUAD histologic subtypes. The first two tasks involve predicting the spatial relationship between a lower and higher magnification tile cropped from the WSIs. We hypothesize that these two tasks induce the model to learn to distinguish different tissue structures presented in the images, thus benefiting the downstream classification. The third task is about predicting the eosin stain from the hematoxylin stain, inducing the model to learn cytoplasmic features which are relevant to LUAD subtypes. The effectiveness of the three proposed SSL tasks and their ensemble was demonstrated by comparison with other state-of-the-art pretraining and SSL methods using three publicly available datasets. Our work can be extended to any other cancer types where tissue architectural information is important.
+
 ![overview](overview.png)
 
 ## Directory structure
