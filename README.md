@@ -6,37 +6,21 @@ Self-Supervised Learning for Histopathologic Subtype Classification
 ## Directory structure
 
 ```
-ssl_proposed: contains the implementation for proposed pretext task
-ssl_magnification_level_prediction: contains the implementation for an existing pretext task that predicts the magnification level of an image tile
-ssl_simsiam: contains the implementation for one of the state-of-the-art contrastive learning method SimSiam
+modeling --> proposed_ssl1: contains the implementation for proposed pretext task 1
+modeling --> proposed_ssl2: contains the implementation for proposed pretext task 2
+modeling --> proposed_ssl3: contains the implementation for proposed pretext task 3
+
+baseline_ssl_magnification_level_prediction: contains the implementation for an existing pretext task that predicts the magnification level of an image tile
+
+baseline_ssl_jigmag: contains the implementation for an existing pretext task where the model takes in a sequence of image tiles cropped at different magnification levels with various orders and predicts the arrangement of those tiles.
+
+baseline_ssl_simsiam: contains the implementation for one of the state-of-the-art contrastive learning method SimSiam
+
+baseline_ssl_byol: contains the implementation for one of the state-of-the-art contrastive learning method BYOL
+
 downstream: contains the implementation for the downstream classification task
-preprocessing: code to generate proposed image pairs of low and high magnification levels from whole slide images
-```
 
-## Model parameters
+downstream_ensemble: contains the implementation for the ensemble of downstream classification models initialized with the three proposed SSL methods.
 
-```
-Proposed: 
-  learning rate = 0.0001, 
-  batch size = 32, 
-  dropout = 0.2, 
-  
-Tile magnification level prediction: 
-  learning rate = 0.0001, 
-  batch size = 32, 
-  dropout = 0.3, 
-  
-Simsiam: 
-  learning rate = 0.01 * batch size / 256 = 0.005, 
-  batch size = 128, 
-
-Downstream:
-  learning rate = 0.0001, 
-  batch size = 16, 
-  dropout = 0.2, 
-
-For all: 
-  learning rate reduces by 0.1 if validation loss does not decrease for 5 epochs,
-  optimizer = Adam with weight decay 1e-4, 
-  100 epochs, early stopping patience = 5 epochs
+preprocessing: code to generate data from whole slide images
 ```
