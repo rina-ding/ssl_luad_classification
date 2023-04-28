@@ -1,14 +1,11 @@
-
-# Copied from https://github.com/PatrickHua/SimSiam/ and modified by Rina Ding
+# https://github.com/PatrickHua/SimSiam/
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F 
 from torchvision.models import resnet18
 
-"""
-SimSiam
-"""
+
 def D(p, z, version='simplified'): # negative cosine similarity
     if version == 'original':
         z = z.detach() # stop gradient
@@ -20,8 +17,6 @@ def D(p, z, version='simplified'): # negative cosine similarity
         return - F.cosine_similarity(p, z.detach(), dim=-1).mean()
     else:
         raise Exception
-
-
 
 class projection_MLP(nn.Module):
     def __init__(self, in_dim, hidden_dim=2048, out_dim=2048):
@@ -92,11 +87,11 @@ class prediction_MLP(nn.Module):
         return x 
 
 class SimSiam(nn.Module):
-    def __init__(self, backbone=resnet18(pretrained = True)):
+    def __init__(self, backbone=resnet18()):
         super().__init__()
         
         self.backbone = backbone
-        self.projector = projection_MLP(1000) # backbone.output_dim
+        self.projector = projection_MLP(1000)
 
         self.encoder = nn.Sequential( # f encoder
             self.backbone,
@@ -111,3 +106,45 @@ class SimSiam(nn.Module):
         p1, p2 = h(z1), h(z2)
         L = D(p1, z2) / 2 + D(p2, z1) / 2
         return {'loss': L}
+
+
+
+
+
+
+if __name__ == "__main__":
+    model = SimSiam()
+    x1 = torch.randn((2, 3, 224, 224))
+    x2 = torch.randn_like(x1)
+
+    model.forward(x1, x2).backward()
+    print("forward backwork check")
+
+    z1 = torch.randn((200, 2560))
+    z2 = torch.randn_like(z1)
+    import time
+    tic = time.time()
+    print(D(z1, z2, version='original'))
+    toc = time.time()
+    print(toc - tic)
+    tic = time.time()
+    print(D(z1, z2, version='simplified'))
+    toc = time.time()
+    print(toc - tic)
+
+# Output:
+# tensor(-0.0010)
+# 0.005159854888916016
+# tensor(-0.0010)
+# 0.0014872550964355469
+
+
+
+
+
+
+
+
+
+
+

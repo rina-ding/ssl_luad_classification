@@ -1,10 +1,10 @@
-# Code modified from https://github.com/deroneriksson/python-wsi-preprocessing/blob/master/docs/wsi-preprocessing-in-python/index.md
-
+# Reproduced from https://github.com/deroneriksson/python-wsi-preprocessing/blob/master/docs/wsi-preprocessing-in-python/index.md
 from __future__ import division
 import glob
 from glob import glob as glob_function
 import math
 import matplotlib.pyplot as plt
+import multiprocessing
 import numpy as np
 import pandas as pd
 import openslide
@@ -17,8 +17,7 @@ from enum import Enum
 import re
 import sys
 import util
-from natsort import natsorted
-import random
+
 from util import Time
 
 import scipy.ndimage.morphology as sc_morph
@@ -38,13 +37,15 @@ import cv2 as cv
 
 mag_string = '10'
 SCALE_FACTOR = 32 # 1, 4, 16, 32
-MAG_FACTOR = 16 # 1, 4, 16, 32
+MAG_FACTOR = 4 # 1, 4, 16, 32. 
+WSI_LEVEL = 1 # 0, 1, 2, 3 for openslide level. 
+THUMBNAIL_SIZE = 300
 FILTER_PAGINATION_SIZE = 50
 FILTER_PAGINATE = True
 TILE_SUMMARY_PAGINATION_SIZE = 50
 TILE_SUMMARY_PAGINATE = True
 
-TISSUE_HIGH_THRESH = 40
+TISSUE_HIGH_THRESH = 20
 TISSUE_LOW_THRESH = 0
 
 ROW_TILE_SIZE = 512
@@ -52,16 +53,21 @@ COL_TILE_SIZE = 512
 NUM_TOP_TILES = 10
 
 DISPLAY_TILE_SUMMARY_LABELS = False
-TILE_LABEL_TEXT_SIZE = 40
+TILE_LABEL_TEXT_SIZE = 1 # For obj mag = 20x patients, use 5
 LABEL_ALL_TILES_IN_TOP_TILE_SUMMARY = False
 BORDER_ALL_TILES_IN_TOP_TILE_SUMMARY = False
 
-TILE_BORDER_SIZE = 3 # The size of the colored rectangular border around summary tiles.
+TILE_BORDER_SIZE = 1 # The size of the colored rectangular border around summary tiles.
 
 HIGH_COLOR = (0, 255, 0)
 MEDIUM_COLOR = (255, 255, 0)
 LOW_COLOR = (255, 165, 0)
 NONE_COLOR = (255, 0, 0)
+
+FADED_THRESH_COLOR = (128, 255, 128)
+FADED_MEDIUM_COLOR = (255, 255, 128)
+FADED_LOW_COLOR = (255, 210, 128)
+FADED_NONE_COLOR = (255, 128, 128)
 
 FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 SUMMARY_TITLE_FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
@@ -74,6 +80,8 @@ TILE_TEXT_BACKGROUND_COLOR = (255, 255, 255)
 TILE_TEXT_W_BORDER = 1
 TILE_TEXT_H_BORDER = 1
 
+HSV_PURPLE = 270
+HSV_PINK = 330
 def open_image(filename):
   """
   Open an image (*.jpg, *.png, etc).
@@ -1023,6 +1031,7 @@ def apply_image_filters(np_img, slide_num=None, slide_id = None, info=None, save
                "rgb-not-green-not-gray-no-pens-remove-small")
 
   img = rgb_remove_small
+  print('DONE FILTERING')
   return img
 
 
@@ -1093,8 +1102,8 @@ def save_display(save, display, info, np_img, slide_num, slide_id, filter_num, d
     display_text = "S%03d-F%03d " % (slide_num, filter_num) + display_text
   # if display:
   #   util.display_img(np_img, display_text)
-  # if save:
-  #   save_filtered_image(np_img, slide_num, slide_id, filter_num, file_text)
+  if save:
+    save_filtered_image(np_img, slide_num, slide_id, filter_num, file_text)
   if info is not None:
     info[slide_num * 1000 + filter_num] = (slide_num, filter_num, display_text, file_text, mask_percentage)
 
@@ -1313,9 +1322,9 @@ def generate_top_tile_summaries(tile_sum, np_img, display=True, save_summary=Fal
   if display:
     summary.show()
     summary_orig.show()
-  if save_summary:
+  # if save_summary:
     # save_top_tiles_image(summary, slide_num)
-    save_top_tiles_on_original_image(summary_orig, slide_num)
+  save_top_tiles_on_original_image(summary_orig, slide_num)
 
 def tile_border_color(tissue_percentage):
   """
@@ -1408,45 +1417,6 @@ def save_top_tiles_on_original_image(pil_img, slide_num):
   print("%-20s | Time: %-14s  Name: %s" % ("Save Top Orig", str(t.elapsed()), filepath))
 
   t = Time()
-
-def save_display_tile(tile, save=True, display=False):
-  """
-  Save and/or display a tile image.
-
-  Args:
-    tile: Tile object.
-    save: If True, save tile image.
-    display: If True, dispaly tile image.
-  """
-  t = tile
-  slide_filepath = get_training_slide_path(t.slide_id)
-  s = open_slide(slide_filepath)
-
-  x, y = t.o_c_s, t.o_r_s
-  w, h = ROW_TILE_SIZE, COL_TILE_SIZE
-  tile_region = s.read_region((x, y), 2, (w, h))
-  pil_img_level2 = tile_region.convert("RGB")
-  img2_resized = np.asarray(pil_img_level2.resize((224, 224)))
-  img2_resized = Image.fromarray(img2_resized, 'RGB')
-  img_path_level2 = get_tile_image_path(tile)
-  img_path_level2 = img_path_level2.replace('w512-h512', '10x')
-  dir = os.path.dirname(img_path_level2)
-  if not os.path.exists(dir):
-    os.makedirs(dir)
-  img2_resized.save(img_path_level2)
-
-  # Generate 16 non-overlapping tiles from 20x
-  for delta_x in range(512):
-    for delta_y in range(512):
-        if delta_x % (512/4) == 0 and delta_y % (512/4) == 0:
-            new_x = x + delta_x * 16
-            new_y = y + delta_y * 16
-            current_tile_region = s.read_region((new_x, new_y), 1, (w, h))
-            pil_img_level = current_tile_region.convert("RGB")
-            img_resized = np.asarray(pil_img_level.resize((224, 224)))
-            img_resized = Image.fromarray(img_resized, 'RGB')
-            img_path = img_path_level2.replace('10x', 'new-x' + str(new_x) + '-y' + str(new_y) + '-20x')
-            img_resized.save(img_path)
 
 def pil_text(text, w_border=TILE_TEXT_W_BORDER, h_border=TILE_TEXT_H_BORDER, font_path=FONT_PATH,
              font_size=TILE_TEXT_SIZE, text_color=TILE_TEXT_COLOR, background=TILE_TEXT_BACKGROUND_COLOR):
@@ -1548,7 +1518,8 @@ class TileSummary:
     Returns:
        List of the tiles ranked by score.
     """
-    sorted_list = sorted(self.tiles, key=lambda t: t.score, reverse=True)
+    # sorted_list = sorted(self.tiles, key=lambda t: t.score, reverse=True)
+    sorted_list = self.tiles
     return sorted_list
 
   def all_tiles(self):
@@ -1609,62 +1580,50 @@ class Tile:
   def mask_percentage(self):
     return 100 - self.tissue_percentage
 
-  def get_tiles_from_higher_mag_level(self):
+  def save_tiles(self):
     t = self
     slide_filepath = get_training_slide_path(t.slide_id)
     s = open_slide(slide_filepath)
 
     x, y = t.o_c_s, t.o_r_s
     w, h = ROW_TILE_SIZE, COL_TILE_SIZE
-    tile_region = s.read_region((x, y), 2, (w, h))
-    pil_img_level2 = tile_region.convert("RGB")
-    img2_resized = np.asarray(pil_img_level2.resize((224, 224)))
+    tile_region = s.read_region((x, y), WSI_LEVEL, (w, h))
+    pil_img = tile_region.convert("RGB")
+    img2_resized = np.asarray(pil_img.resize((224, 224)))
     img2_resized = Image.fromarray(img2_resized, 'RGB')
-    img_path_level2 = get_tile_image_path(self)
-    img_path_level2 = img_path_level2.replace('w512-h512', '10x')
-    dir = os.path.dirname(img_path_level2)
+    img_path = get_tile_image_path(self)
+    img_path = img_path.replace('w512-h512', mag_string + 'x')
+    dir = os.path.dirname(img_path)
     if not os.path.exists(dir):
       os.makedirs(dir)
-    img2_resized.save(img_path_level2)
+    img2_resized.save(img_path)
 
-    # Generate 16 non-overlapping tiles from 20x
-    for delta_x in range(ROW_TILE_SIZE):
-      for delta_y in range(COL_TILE_SIZE):
-          if delta_x % (ROW_TILE_SIZE/4) == 0 and delta_y % (COL_TILE_SIZE/4) == 0:
-              new_x = x + delta_x * MAG_FACTOR
-              new_y = y + delta_y * MAG_FACTOR
-              current_tile_region = s.read_region((new_x, new_y), 1, (w, h))
-              pil_img_level = current_tile_region.convert("RGB")
-              img_resized = np.asarray(pil_img_level.resize((224, 224)))
-              img_resized = Image.fromarray(img_resized, 'RGB')
-              img_path = img_path_level2.replace('10x', 'new-x' + str(new_x) + '-y' + str(new_y) + '-20x')
-              img_resized.save(img_path)
-
-def singleprocess_filtered_images_to_tiles(display=False, save_summary=True, save_data=True, save_top_tiles=True,
+def singleprocess_filtered_images_to_tiles(cohort_name, display=False, save_summary=True, save_data=True, save_top_tiles=False,
                                            html=True, image_num_list=None):
   
   num_training_slides, slide_ids = get_num_training_slides()
-  count = 0
   for slide_num in range(num_training_slides):
     img_path = get_filter_image_result(slide_ids[slide_num])
     np_img = open_image_np(img_path)
-    img_path_pid = img_path.split('/')[6]
-    img_path_sid = img_path.split('/')[8].split('-')[0]
-    print(img_path)
-    # CHECK WHETHER IT'S 40X AND HAS 4 LEVELS, also have downsampling factors of 1, 4, 16, 32
-    try:
-      slide_path = 'slide_path'
-      openslide_obj = openslide.open_slide(slide_path)
-    except:
-      return 0
-    if int(openslide_obj.level_count) == 4 and int(openslide_obj.properties['aperio.AppMag']) == 40 and math.floor(openslide_obj.level_downsamples[3]) == 32:
-      count = count + 1
-      print("Processing ", slide_path)
-      print(count)
-      tile_sum = score_tiles(slide_num, slide_ids[slide_num], np_img)
+
+    # For NLST data
+    if cohort_name == 'nlst':
+      img_path_pid = img_path.split('/')[6]
+      img_path_sid = img_path.split('/')[8].split('-')[0]
+
+    # For TCGA data
+    else:
+      img_path_pid = os.path.basename(img_path)[0:12]
+      img_path_sid = os.path.basename(img_path)[0:23]
+    
+    slide_path = os.path.join(wsi_root_path, img_path_pid, img_path_sid + '.svs')
+    print("Processing ", slide_path)
+    tile_sum = score_tiles(slide_num, slide_ids[slide_num], np_img)
+    if save_summary:
       generate_top_tile_summaries(tile_sum, np_img, display=display, save_summary=save_summary)
+    if save_top_tiles:
       for tile in tile_sum.all_tiles():
-        tile.get_tiles_from_higher_mag_level()
+        tile.save_tiles()
 
 def score_tiles(slide_num, slide_id, np_img=None, dimensions=None, small_tile_in_tile=False):
   """
@@ -1749,58 +1708,20 @@ def score_tiles(slide_num, slide_id, np_img=None, dimensions=None, small_tile_in
 
   return tile_sum
 
-def organize_tile_pairs_only_20x_10x():
-    count = 0
-    wsi_tiles_dirs = sorted(glob_function(os.path.join(wsi_tiles_root_dir, '1*')))
-    for i in range(1, len(wsi_tiles_dirs)):
-      if os.path.isdir(os.path.join(wsi_tiles_dirs[i], 'all_magnifications_tiles_png')): 
-        count = count + 1
-        print(count)
-        print(wsi_tiles_dirs[i])
-        all_tiles = natsorted(glob_function(os.path.join(wsi_tiles_dirs[i], 'all_magnifications_tiles_png', '*.png')))
-        all_10x_tiles = natsorted(glob_function(os.path.join(wsi_tiles_dirs[i], 'all_magnifications_tiles_png', '*10x.png')))
-        for j in range(len(all_tiles)):
-          if j % 17 == 0: 
-            if j <= len(all_tiles) - 17:
-              tile_10x = all_tiles[j]
-              tiles_20x = all_tiles[j+1:j+17] # 16 20x tiles per 10x tile
-
-              # Positive pairs
-              nth_tile = 0
-              for tile_20x in tiles_20x:
-                nth_tile += 1
-                positive_pair_dir_20_10 = os.path.join(dest_dir, 'yes_20_10_' + os.path.basename(wsi_tiles_dirs[i]) + '_' + os.path.basename(tile_10x).replace('-10x.png', '_' + str(nth_tile)))
-                if not os.path.exists(positive_pair_dir_20_10):
-                  os.makedirs(positive_pair_dir_20_10)
-                shutil.copy(tile_10x, positive_pair_dir_20_10)
-                shutil.copy(tile_20x, positive_pair_dir_20_10)
-
-              # Negative pairs
-              current_10x_tile_index = all_10x_tiles.index(tile_10x)
-              random_negative_10x_tile = all_10x_tiles[random.choice([*range(current_10x_tile_index), *range(current_10x_tile_index + 1, len(all_10x_tiles))])]
-              random_negative_10x_tile_index = all_tiles.index(random_negative_10x_tile)
-              random_negative_20x_tiles = all_tiles[random_negative_10x_tile_index + 1 : random_negative_10x_tile_index + 17]
-              nth_tile = 0
-              for negative_tile_20x in random_negative_20x_tiles:
-                nth_tile += 1
-                negative_pair_dir_20_10 = os.path.join(dest_dir, 'no_20_10_' + os.path.basename(wsi_tiles_dirs[i]) + '_' + os.path.basename(tile_10x).replace('-10x.png', '_' + str(nth_tile)))
-                if not os.path.exists(negative_pair_dir_20_10):
-                  os.makedirs(negative_pair_dir_20_10)
-                shutil.copy(tile_10x, negative_pair_dir_20_10)
-                shutil.copy(negative_tile_20x, negative_pair_dir_20_10)
-
-
-
 if __name__ == "__main__":
-  wsi_cases_dir = 'wsi_cases_dir'
+  wsi_root_path = 'path_to_wsi_images'
+  wsi_cases_dir = glob_function(os.path.join(wsi_root_path, '*'))
   wsi_cases_dir = sorted(wsi_cases_dir)
-  wsi_tiles_root_dir = 'wsi_tiles_root_dir'
-  dest_dir = 'path_to_dir_for_generated_pairs'
-  total = 0
+  wsi_tiles_root_dir = 'path_to_generated_tiles'
+ 
+  cohort_name = 'nlst'
+
   for case in range(len(wsi_cases_dir)):
     wsi_tiles_cases_dir = os.path.join(wsi_tiles_root_dir, os.path.basename(wsi_cases_dir[case]))
+    
     if not os.path.exists(wsi_tiles_cases_dir):
-        os.makedirs(wsi_tiles_cases_dir)
+      os.makedirs(wsi_tiles_cases_dir)
+      
     base_dir = wsi_tiles_cases_dir
     src_train_dir = wsi_cases_dir[case]
     dest_train_dir = os.path.join(base_dir, "low_resolution_" + "png")
@@ -1813,15 +1734,7 @@ if __name__ == "__main__":
     top_tiles_dir = os.path.join(base_dir, top_tiles_suffix + "_" + "png")
     top_tiles_on_original_dir = os.path.join(base_dir, top_tiles_suffix + "_on_original_" + "png")
 
-    tile_dir = os.path.join(base_dir, "all_magnifications_tiles_" + "png")
-
-    if os.path.exists(os.path.join(wsi_tiles_cases_dir, 'all_magnifications_tiles_png')):
-      print(wsi_tiles_cases_dir)
-      print(len(glob_function(os.path.join(wsi_tiles_cases_dir, 'all_magnifications_tiles_png', '*20x.png'))))
-
+    tile_dir = os.path.join(base_dir, "tiles_" + mag_string + "x_" + "png")
     singleprocess_training_slides_to_images()
     singleprocess_apply_filters_to_images(html = False)
-    singleprocess_filtered_images_to_tiles(display = False, image_num_list = None, save_top_tiles=True)
-    total = total + len(glob_function(os.path.join(wsi_tiles_cases_dir, 'all_magnifications_tiles_png', '*20x.png')))
-
-  print('Cumulative total tile count ', total)
+    singleprocess_filtered_images_to_tiles(cohort_name, display = False, image_num_list = None, save_summary=False, save_data=False, save_top_tiles=True)
