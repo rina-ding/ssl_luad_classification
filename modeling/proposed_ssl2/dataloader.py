@@ -25,8 +25,8 @@ class DataProcessor(Dataset):
             img1_path = glob(os.path.join(img_pair_dir, '*-10x.png'))[0]
             img2_path = glob(os.path.join(img_pair_dir, '*-2.5x.png'))[0]
         except:
-            img1_path = glob(os.path.join(img_pair_dir, '*-5x.png'))[0]
-            img2_path = glob(os.path.join(img_pair_dir, '*-1.25x.png'))[0]
+            img1_path = glob(os.path.join(img_pair_dir, '*-20x.png'))[0]
+            img2_path = glob(os.path.join(img_pair_dir, '*-5x.png'))[0]
         
         img1_to_transform = np.asarray(Image.open(img1_path))
         img2_to_transform = np.asarray(Image.open(img2_path))
