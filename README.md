@@ -64,7 +64,7 @@ Use [generate_tiles.py](./preprocessing/generate_tiles.py) to generate tiles of 
 Use [get_low_high_magnification_image_pairs.py](./preprocessing/get_low_high_magnification_image_pairs.py) to generate tiles pairs by specifying magnification level of the lower magnification tile at `mag_level (string)`, the parent folder path containing all patients and slides `wsi_root_path`, destination folder path`wsi_tiles_root_dir`, and cohort name `cohort_name`('nlst', 'tcga').  
 Use [stain_separation.py](./preprocessing/stain_separation.py) to generate H-stained image tiles and E-stained image tiles. Change the parent folder path containing all tiles that need to be stain separated using `input_root_path` and the parent folder path for storing stain separated tiles using`dest_root_path`.
 
-For each dataset, the input folder structure should be:
+Each dataset's folder structure should be:
 ```
   ├── <patient_id>                   
   │   ├── <slide_id>   
