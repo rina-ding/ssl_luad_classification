@@ -59,7 +59,7 @@ Lung adenocarcinoma (LUAD) is a morphologically heterogeneous disease with five 
 ## Instructions 
 ### Preprocessing
 Download NLST data from [NLST](https://wiki.cancerimagingarchive.net/display/NLST/NLST+Pathology), download TCGA data from [TCGA-LUAD](https://portal.gdc.cancer.gov/projects/TCGA-LUAD), and download CPTAC data from [CPTAC](https://wiki.cancerimagingarchive.net/pages/viewpage.action?pageId=33948253).
-For each dataset, the folder structure is:
+For each dataset, the input folder structure should be:
 ```
   ├── <patient_id>                   
   │   ├── <slide_id>   
@@ -71,7 +71,7 @@ Use [stain_separation.py](./preprocessing/stain_separation.py) to generate H-sta
 ### Modeling
 For any model, change the train, validation, and/or test image paths accordingly and run `main.py`.  
 
-For proposed SSL 1 and 2, the folder structure is
+For proposed SSL 1 and 2, the input folder structure should be:
 
 ```
   ├── train                   
@@ -83,7 +83,7 @@ For proposed SSL 1 and 2, the folder structure is
       │   ├── <path_to_low_magnification_image.png>
       │   ├── <path_to_high_magnification_image.png>
 ```
-For proposed SSL 3, the folder structure is
+For proposed SSL 3, the input folder structure should be:
 ```
   ├── train                   
   │   ├── <path_to_h_stain_images>
