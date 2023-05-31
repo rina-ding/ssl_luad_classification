@@ -193,8 +193,10 @@ def mask_percent(np_img):
   return black_percentage, white_percentage
 
 if __name__ == "__main__":
-    input_dir = natsorted(glob_function(os.path.join('path_to_tiles_that_need_to_be_stain_separated')))
-    input_dir_e_stain = natsorted(glob_function(os.path.join('path_to_generated_stains')))
+    input_root_path = 'path_to_tiles_that_need_to_be_stain_separated'
+    input_dir = natsorted(glob_function(os.path.join(input_root_path)))
+    dest_root_path = 'path_to_generated_stains'
+    input_dir_e_stain = natsorted(glob_function(os.path.join(dest_root_path)))
 
     for i in range(len(input_dir)):
         print(i)

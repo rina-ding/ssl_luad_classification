@@ -1617,9 +1617,14 @@ def singleprocess_filtered_images_to_tiles(cohort_name, display=False, save_summ
       img_path_sid = img_path.split('/')[8].split('-')[0]
 
     # For TCGA data
-    else:
+    elif cohort_name == 'tcga':
       img_path_pid = os.path.basename(img_path)[0:12]
       img_path_sid = os.path.basename(img_path)[0:23]
+      
+    # For CPTAC data
+    elif cohort_name == 'cptac':
+      img_path_pid = os.path.basename(img_path)[0:9]
+      img_path_sid = os.path.basename(img_path)[0:12]
     
     slide_path = os.path.join(wsi_root_path, img_path_pid, img_path_sid + '.svs')
     print("Processing ", slide_path)
