@@ -58,7 +58,7 @@ Lung adenocarcinoma (LUAD) is a morphologically heterogeneous disease with five 
 ```
 ## Instructions 
 ### Required packages
-Build the docker using the [dockerfile] (https://github.com/rina-ding/ssl_luad_classification/blob/main/requirements/Dockerfile).
+Build the docker using the [dockerfile] (./requirements/Dockerfile)
 ```
 docker run --user $(id -u):$(id -g) -it --gpus all --rm -v <volume_to_be_mounted> -v /etc/localtime:/etc/localtime:ro requirements:v1
 ```
