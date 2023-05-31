@@ -57,6 +57,12 @@ Lung adenocarcinoma (LUAD) is a morphologically heterogeneous disease with five 
         │   └── proposed_ssl3 # Trained weights for proposed SSL3-pretrained downstream model
 ```
 ## Instructions 
+### Required packages
+Build the docker using the [dockerfile] (./requirements/Dockerfile).
+```
+docker run --user $(id -u):$(id -g) -it --gpus all --rm -v <volume_to_be_mounted> -v /etc/localtime:/etc/localtime:ro requirements:v1
+```
+
 ### Preprocessing
 Download NLST data from [NLST](https://wiki.cancerimagingarchive.net/display/NLST/NLST+Pathology), download TCGA data from [TCGA-LUAD](https://portal.gdc.cancer.gov/projects/TCGA-LUAD), and download CPTAC data from [CPTAC](https://wiki.cancerimagingarchive.net/pages/viewpage.action?pageId=33948253).
 
