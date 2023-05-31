@@ -105,6 +105,28 @@ For proposed SSL 3, the input folder structure should be:
       │   ├── <path_to_image2.png>
       │   ├── ...
 ```
+For downstream model, the input folder structure should be:
+```
+  ├── train                   
+  │   ├── <path_to_a_folder_containing_one_tissue_class>
+      │   ├── <path_to_image1.png>
+      │   ├── <path_to_image2.png>
+      │   ├── ...
+      ├── ...
+  ├── validation       
+  │   ├── <path_to_a_folder_containing_one_tissue_class>
+      │   ├── <path_to_image1.png>
+      │   ├── <path_to_image2.png>
+      │   ├── ...    
+      ├── ...        
+  ├── test      
+  │   ├── <path_to_a_folder_containing_one_tissue_class>
+      │   ├── <path_to_image1.png>
+      │   ├── <path_to_image2.png>
+      │   ├── ... 
+      ├── ...         
+```
+
 
 
 
