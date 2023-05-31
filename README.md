@@ -70,7 +70,7 @@ For each dataset, the input folder structure should be:
   │   ├── <slide_id>   
 ```
 ### Modeling
-For any model, change the train, validation, and/or test image paths accordingly and run `main.py`.  
+For any model, run `main.py` after changing the train (`train_images`), validation (`valid_images`), and/or test image ((`test_images`)) paths accordingly.  
 
 For proposed SSL 1 and 2, the input folder structure should be:
 
