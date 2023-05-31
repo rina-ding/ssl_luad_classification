@@ -65,7 +65,7 @@ For each dataset, the folder structure is:
   │   ├── <slide_id>   
 ```
 Use [generate_tiles.py](./preprocessing/generate_tiles.py) to generate tiles of specified magnification level specified by `mag_level (string)`.  
-Use [generate_low_high_magnification_image_pairs.py](./preprocessing/generate_low_high_magnification_image_pairs.py) to generate tiles pairs by specifying magnification level of the lower magnification tile at `mag_level (string)`.   
+Use [get_low_high_magnification_image_pairs.py](./preprocessing/get_low_high_magnification_image_pairs.py) to generate tiles pairs by specifying magnification level of the lower magnification tile at `mag_level (string)`.   
 Use [stain_separation.py](./preprocessing/stain_separation.py) to generate H-stained image tiles and E-stained image tiles.
 
 ### Modeling
@@ -90,7 +90,15 @@ For proposed SSL 3, the folder structure is
       │   ├── <path_to_image1.png>
       │   ├── <path_to_image2.png>
       │   ├── ...
-  ├── validation                   
+  │   ├── <path_to_e_stain_images>
+      │   ├── <path_to_image1.png>
+      │   ├── <path_to_image2.png>
+      │   ├── ...
+  ├── validation       
+  │   ├── <path_to_h_stain_images>
+      │   ├── <path_to_image1.png>
+      │   ├── <path_to_image2.png>
+      │   ├── ...            
   │   ├── <path_to_e_stain_images>
       │   ├── <path_to_image1.png>
       │   ├── <path_to_image2.png>
