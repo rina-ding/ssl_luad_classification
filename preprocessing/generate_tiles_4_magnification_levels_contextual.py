@@ -37,27 +37,24 @@ import cv2 as cv
 import random
 import itertools
 
-PERCENT_40X = 0.3
-
-mag_string = '40'
-SCALE_FACTOR = 32 # 1, 4, 16, 32
-MAG_FACTOR = 1 # 1, 4, 16, 32. 
-WSI_LEVEL = 0 # 0, 1, 2, 3 for openslide level. 
+mag_level = '40'
+SCALE_FACTOR = 32 
+MAG_FACTOR = 1 
+WSI_LEVEL = 0 
 THUMBNAIL_SIZE = 300
 FILTER_PAGINATION_SIZE = 50
 FILTER_PAGINATE = True
 TILE_SUMMARY_PAGINATION_SIZE = 50
 TILE_SUMMARY_PAGINATE = True
 
-TISSUE_HIGH_THRESH = 40
+TISSUE_HIGH_THRESH = 20
 TISSUE_LOW_THRESH = 0
 
 ROW_TILE_SIZE = 512
 COL_TILE_SIZE = 512
-NUM_TOP_TILES = 10
 
 DISPLAY_TILE_SUMMARY_LABELS = False
-TILE_LABEL_TEXT_SIZE = 10 # For obj mag = 20x patients, use 5
+TILE_LABEL_TEXT_SIZE = 10 
 LABEL_ALL_TILES_IN_TOP_TILE_SUMMARY = False
 BORDER_ALL_TILES_IN_TOP_TILE_SUMMARY = False
 
@@ -1536,7 +1533,7 @@ class TileSummary:
     sorted_tiles = self.tiles_by_score()
     random.seed(123)
     random.shuffle(sorted_tiles)
-    all_tiles = sorted_tiles[0:math.floor(len(sorted_tiles)*PERCENT_40X)] # Randomly get a percentage of the 40x tiles, else if we get all, there will be a lot of overlap between the lower mag tiles
+    all_tiles = sorted_tiles[0:len(sorted_tiles)] 
     return all_tiles
 
   def get_tile(self, row, col):
@@ -1788,7 +1785,7 @@ if __name__ == "__main__":
       tile_summary_on_original_dir = os.path.join(base_dir, "tile_summary_on_original_" + "png")
       tile_data_dir = os.path.join(base_dir, "tile_data")
 
-      top_tiles_suffix = mag_string + "x_top_tile_summary"
+      top_tiles_suffix = mag_level + "x_top_tile_summary"
       top_tiles_dir = os.path.join(base_dir, top_tiles_suffix + "_" + "png")
       top_tiles_on_original_dir = os.path.join(base_dir, top_tiles_suffix + "_on_original_" + "png")
       tile_dir = os.path.join(base_dir, "tiles_contextual_4_mags_png")

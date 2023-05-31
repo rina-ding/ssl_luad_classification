@@ -35,10 +35,19 @@ import sys
 from random import randrange
 import cv2 as cv
 
-mag_string = '10'
-SCALE_FACTOR = 32 # 1, 4, 16, 32
-MAG_FACTOR = 4 # 1, 4, 16, 32. 
-WSI_LEVEL = 1 # 0, 1, 2, 3 for openslide level. 
+mag_level = '10'
+SCALE_FACTOR = 32 
+if mag_level == '20':
+  MAG_FACTOR = 1 
+  WSI_LEVEL = 0 
+  ROW_TILE_SIZE = 1024
+  COL_TILE_SIZE = 1024
+elif mag_level == '10':
+  MAG_FACTOR = 4
+  WSI_LEVEL = 1
+  ROW_TILE_SIZE = 512
+  COL_TILE_SIZE = 512
+
 THUMBNAIL_SIZE = 300
 FILTER_PAGINATION_SIZE = 50
 FILTER_PAGINATE = True
@@ -48,12 +57,8 @@ TILE_SUMMARY_PAGINATE = True
 TISSUE_HIGH_THRESH = 20
 TISSUE_LOW_THRESH = 0
 
-ROW_TILE_SIZE = 512
-COL_TILE_SIZE = 512
-NUM_TOP_TILES = 10
-
 DISPLAY_TILE_SUMMARY_LABELS = False
-TILE_LABEL_TEXT_SIZE = 1 # For obj mag = 20x patients, use 5
+TILE_LABEL_TEXT_SIZE = 1 
 LABEL_ALL_TILES_IN_TOP_TILE_SUMMARY = False
 BORDER_ALL_TILES_IN_TOP_TILE_SUMMARY = False
 
@@ -1592,7 +1597,7 @@ class Tile:
     img2_resized = np.asarray(pil_img.resize((224, 224)))
     img2_resized = Image.fromarray(img2_resized, 'RGB')
     img_path = get_tile_image_path(self)
-    img_path = img_path.replace('w512-h512', mag_string + 'x')
+    img_path = img_path.replace('w512-h512', mag_level + 'x')
     dir = os.path.dirname(img_path)
     if not os.path.exists(dir):
       os.makedirs(dir)
@@ -1730,11 +1735,11 @@ if __name__ == "__main__":
     tile_summary_on_original_dir = os.path.join(base_dir, "tile_summary_on_original_" + "png")
     tile_data_dir = os.path.join(base_dir, "tile_data")
 
-    top_tiles_suffix = mag_string + "x_top_tile_summary"
+    top_tiles_suffix = mag_level + "x_top_tile_summary"
     top_tiles_dir = os.path.join(base_dir, top_tiles_suffix + "_" + "png")
     top_tiles_on_original_dir = os.path.join(base_dir, top_tiles_suffix + "_on_original_" + "png")
 
-    tile_dir = os.path.join(base_dir, "tiles_" + mag_string + "x_" + "png")
+    tile_dir = os.path.join(base_dir, "tiles_" + mag_level + "x_" + "png")
     singleprocess_training_slides_to_images()
     singleprocess_apply_filters_to_images(html = False)
     singleprocess_filtered_images_to_tiles(cohort_name, display = False, image_num_list = None, save_summary=False, save_data=False, save_top_tiles=True)

@@ -16,8 +16,8 @@ from glob import glob
 from model import ModifiedResNet
 
 NUM_CHANNEL = 6
-FIGURE_DIR = 'path_to_figures'
-MODEL_DIR = 'path_to_saved_models'
+FIGURE_DIR = './saved_figures'
+MODEL_DIR = './saved_models'
 if not os.path.exists(FIGURE_DIR):
     os.makedirs(FIGURE_DIR)
 if not os.path.exists(MODEL_DIR):

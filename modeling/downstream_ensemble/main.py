@@ -19,7 +19,7 @@ import os
 from glob import glob
 from model import ModifiedResNet, ResNetEncoder
 
-FIGURE_DIR = 'path_to_figures'
+FIGURE_DIR = './saved_figures'
 if not os.path.exists(FIGURE_DIR):
     os.makedirs(FIGURE_DIR)
 

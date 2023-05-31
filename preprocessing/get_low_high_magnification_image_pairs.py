@@ -36,20 +36,26 @@ import sys
 from random import randrange
 import cv2 as cv
 
-mag_string = '2.5'
-SCALE_FACTOR = 32 # 1, 4, 16, 32
-MAG_FACTOR = 16 # 1, 4, 16, 32
+mag_level = '2.5'
+SCALE_FACTOR = 32 
+if mag_level == '2.5':
+  MAG_FACTOR = 16
+  WSI_LEVEL = 2 
+  ROW_TILE_SIZE = 512
+  COL_TILE_SIZE = 512
+elif mag_level == '5':
+  MAG_FACTOR = 4
+  WSI_LEVEL = 1
+  ROW_TILE_SIZE = 1024
+  COL_TILE_SIZE = 1024
+
 FILTER_PAGINATION_SIZE = 50
 FILTER_PAGINATE = True
 TILE_SUMMARY_PAGINATION_SIZE = 50
 TILE_SUMMARY_PAGINATE = True
 
-TISSUE_HIGH_THRESH = 40
+TISSUE_HIGH_THRESH = 20
 TISSUE_LOW_THRESH = 0
-
-ROW_TILE_SIZE = 512
-COL_TILE_SIZE = 512
-NUM_TOP_TILES = 10
 
 DISPLAY_TILE_SUMMARY_LABELS = False
 TILE_LABEL_TEXT_SIZE = 40
@@ -1567,7 +1573,7 @@ class Tile:
 
     x, y = t.o_c_s, t.o_r_s
     w, h = ROW_TILE_SIZE, COL_TILE_SIZE
-    tile_region = s.read_region((x, y), 2, (w, h))
+    tile_region = s.read_region((x, y), WSI_LEVEL, (w, h))
     pil_img_level2 = tile_region.convert("RGB")
     img2_resized = np.asarray(pil_img_level2.resize((224, 224)))
     img2_resized = Image.fromarray(img2_resized, 'RGB')
@@ -1582,13 +1588,17 @@ class Tile:
     for delta_x in range(ROW_TILE_SIZE):
       for delta_y in range(COL_TILE_SIZE):
           if delta_x % (ROW_TILE_SIZE/4) == 0 and delta_y % (COL_TILE_SIZE/4) == 0:
-              new_x = x + delta_x * 16
-              new_y = y + delta_y * 16
-              current_tile_region = s.read_region((new_x, new_y), 1, (w, h))
+              new_x = x + delta_x * MAG_FACTOR
+              new_y = y + delta_y * MAG_FACTOR
+              current_tile_region = s.read_region((new_x, new_y), int(WSI_LEVEL-1), (w, h))
               pil_img_level = current_tile_region.convert("RGB")
               img_resized = np.asarray(pil_img_level.resize((224, 224)))
               img_resized = Image.fromarray(img_resized, 'RGB')
-              img_path = img_path_level2.replace('2.5x', 'new-x' + str(new_x) + '-y' + str(new_y) + '-10x')
+              if mag_level == '2.5':
+                img_path = img_path_level2.replace('2.5x', 'new-x' + str(new_x) + '-y' + str(new_y) + '-10x')
+              elif mag_level == '5':
+                img_path = img_path_level2.replace('5x', 'new-x' + str(new_x) + '-y' + str(new_y) + '-20x')
+
               img_resized.save(img_path)
 
 def singleprocess_filtered_images_to_tiles(cohort_name, display=False, save_summary=True, save_data=True, save_top_tiles=True,
@@ -1717,7 +1727,7 @@ if __name__ == "__main__":
       tile_summary_on_original_dir = os.path.join(base_dir, "tile_summary_on_original_" + "png")
       tile_data_dir = os.path.join(base_dir, "tile_data")
 
-      top_tiles_suffix = mag_string + "x_top_tile_summary"
+      top_tiles_suffix = mag_level + "x_top_tile_summary"
       top_tiles_dir = os.path.join(base_dir, top_tiles_suffix + "_" + "png")
       top_tiles_on_original_dir = os.path.join(base_dir, top_tiles_suffix + "_on_original_" + "png")
 
