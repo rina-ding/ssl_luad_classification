@@ -79,10 +79,13 @@ For proposed SSL 1 and 2, the input folder structure should be:
   │   ├── <path_to_a_low_high_magnification_image_pair>
       │   ├── <path_to_low_magnification_image.png>
       │   ├── <path_to_high_magnification_image.png>
+      ├── ...
   ├── validation                  
   │   ├── <path_to_a_low_high_magnification_image_pair>
       │   ├── <path_to_low_magnification_image.png>
       │   ├── <path_to_high_magnification_image.png>
+      ├── ...
+
 ```
 For proposed SSL 3, the input folder structure should be:
 ```
