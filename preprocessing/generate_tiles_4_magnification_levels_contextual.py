@@ -1598,7 +1598,7 @@ class Tile:
       img_resized = np.asarray(pil_img.resize((224, 224)))  
       img_resized = Image.fromarray(img_resized, 'RGB')
       img_path = get_tile_image_path(self)
-      img_path = img_path.replace('w512-h512', 'level' + str(i) + '_c1')
+      img_path = img_path.replace('w' + str(w) + '-h' + str(h), mag_level + 'x')
       dir = os.path.dirname(img_path)
       pid = img_path.split('/')[6]
       

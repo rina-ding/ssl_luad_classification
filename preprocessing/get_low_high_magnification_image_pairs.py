@@ -1578,7 +1578,7 @@ class Tile:
     img2_resized = np.asarray(pil_img_level2.resize((224, 224)))
     img2_resized = Image.fromarray(img2_resized, 'RGB')
     img_path_level2 = get_tile_image_path(self)
-    img_path_level2 = img_path_level2.replace('w512-h512', '2.5x')
+    img_path_level2 = img_path_level2.replace('w' + str(w) + '-h' + str(h), '2.5x')
     dir = os.path.dirname(img_path_level2)
     if not os.path.exists(dir):
       os.makedirs(dir)
