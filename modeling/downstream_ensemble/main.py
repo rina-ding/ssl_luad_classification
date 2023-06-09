@@ -84,110 +84,152 @@ class TrainModel:
         plt.savefig(os.path.join(figures_dir, 'confusion_matrix_test_set' + str(fold_index) + '.png'))
         plt.clf()
 
-    def runtestset(self, path_to_images, ssl1_model_path, ssl2_model_path,ssl3_model_path, fold_index):
+    def find_best_weights(self, path_to_valid_images, path_to_test_images, ssl1_model_path, ssl2_model_path,ssl3_model_path, fold_index):
         figures_dir = FIGURE_DIR
         if not os.path.exists(figures_dir):
             os.makedirs(figures_dir)
-        if path_to_images:
-            dataset = DataProcessor(imgs_dir=path_to_images, transformations=transforms.Compose([transforms.ToPILImage(), transforms.ToTensor(), transforms.Resize((224, 224)), transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])]))
-            print("Images for testing:", len(dataset))
-            testloader = DataLoader(dataset, batch_size=self.batch, shuffle=False, drop_last=False)
-            # Define model
-            pass_one_batch = False
-             # Instantiate model 
-            model1 = ModifiedResNet(self.num_classes).to(self.device)
-            weights = torch.load(os.path.join(ssl1_model_path, 'resnet18_fold' + str(fold_index) + '.pth'), map_location=self.device)
-            model1.load_state_dict(weights)
+        valid_dataset = DataProcessor(imgs_dir=path_to_valid_images, transformations=transforms.Compose([transforms.ToPILImage(), transforms.ToTensor(), transforms.Resize((224, 224)), transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])]))
+        test_dataset = DataProcessor(imgs_dir=path_to_test_images, transformations=transforms.Compose([transforms.ToPILImage(), transforms.ToTensor(), transforms.Resize((224, 224)), transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])]))
+        
+        print("Images for val:", len(valid_dataset))
+        print("Images for testing:", len(test_dataset))
+        valloader = DataLoader(valid_dataset, batch_size=self.batch, shuffle=False, drop_last=False, num_workers = 4)
+        testloader = DataLoader(test_dataset, batch_size=self.batch, shuffle=False, drop_last=False, num_workers = 4)
+       
+        model1 = ModifiedResNet(self.num_classes).to(self.device)
+        weights = torch.load(os.path.join(ssl1_model_path, 'resnet18_fold' + str(fold_index) + '.pth'), map_location=self.device)
+        model1.load_state_dict(weights)
 
-            model2 = ModifiedResNet(self.num_classes).to(self.device)
-            weights = torch.load(os.path.join(ssl2_model_path, 'resnet18_fold' + str(fold_index) + '.pth'), map_location=self.device)
-            model2.load_state_dict(weights)
+        model2 = ModifiedResNet(self.num_classes).to(self.device)
+        weights = torch.load(os.path.join(ssl2_model_path, 'resnet18_fold' + str(fold_index) + '.pth'), map_location=self.device)
+        model2.load_state_dict(weights)
 
-            model3 = ResNetEncoder(self.num_classes).to(self.device)
-            weights = torch.load(os.path.join(ssl3_model_path, 'resnet18_fold' + str(fold_index) + '.pth'), map_location=self.device)
-            model3.load_state_dict(weights)
+        model3 = ResNetEncoder(self.num_classes).to(self.device)
+        weights = torch.load(os.path.join(ssl3_model_path, 'resnet18_fold' + str(fold_index) + '.pth'), map_location=self.device)
+        model3.load_state_dict(weights)
+        # Define the weight combinations to be searched
+        weights = np.linspace(0, 1, 11)  # 11 evenly spaced values between 0 and 1
 
-            # Make Predictions
-            with torch.no_grad():
-                model1.eval()
-                model2.eval()
-                model3.eval()
-                if pass_one_batch:
-                    pass
-                else:
-                    y_truth, y_prediction, scores = [], [], []
-                    for data in testloader:
-                        image_combined, image_single, labels = data['image_combined'].to(self.device, dtype=torch.float), data['image_single'].to(self.device, dtype=torch.float), data['label'].to(self.device, dtype=torch.long)
-                        output1 = model1.forward(image_combined)
-                        output_pb1 = F.softmax(output1.cpu(), dim=1)
-                        output_pb1 = output_pb1.numpy().tolist()
-                        # top_ps, top_class1 = output_pb1.topk(1, dim=1)
+        best_weights = None
+        best_f1_score = 0
+        with torch.no_grad():
+            model1.eval()
+            model2.eval()
+            model3.eval()
 
-                        output2 = model2.forward(image_combined)
-                        output_pb2 = F.softmax(output2.cpu(), dim=1)
-                        output_pb2 = output_pb2.numpy().tolist()
-                        # top_ps, top_class2 = output_pb2.topk(1, dim=1)
+            # Perform grid search for the best weights
+            for w1 in weights:
+                for w2 in weights:
+                    for w3 in weights:
+                        # Skip weight combinations where the sum is not close to 1
+                        if not np.isclose(w1 + w2 + w3, 1):
+                            continue
+                        print((w1, w2, w3))
+                        y_truth, y_prediction, scores = [], [], []
+                        for data in valloader:
+                            image_combined, image_single, labels = data['image_combined'].to(self.device, dtype=torch.float), data['image_single'].to(self.device, dtype=torch.float), data['label'].to(self.device, dtype=torch.long)
+                            output1 = model1.forward(image_combined)
+                            output_pb1 = F.softmax(output1.cpu(), dim=1)
+                            output_pb1 = output_pb1.numpy().tolist()
 
-                        output3 = model3.forward(image_single)
-                        output_pb3 = F.softmax(output3.cpu(), dim=1)
-                        output_pb3 = output_pb3.numpy().tolist()
-                        # top_ps, top_class3 = output_pb3.topk(1, dim=1)
+                            output2 = model2.forward(image_combined)
+                            output_pb2 = F.softmax(output2.cpu(), dim=1)
+                            output_pb2 = output_pb2.numpy().tolist()
 
-                        output_pb_ensemble = []
-                        for i in range(len(output_pb1)):
-                            pb_one_patient_ssl1 = output_pb1[i]
-                            pb_one_patient_ssl2 = output_pb2[i]
-                            pb_one_patient_ssl3 = output_pb3[i]
-                            pb_one_patient_updated = []
-                            for j in range(len(pb_one_patient_ssl1)):
-                                if j == 0: # Probability for lepidic
-                                    pb_one_patient_updated.append(pb_one_patient_ssl1[j] * 0.6 + pb_one_patient_ssl2[j] * 0.2 + pb_one_patient_ssl3[j] * 0.2)
-                                elif j == 1: # Probability for acinar
-                                    pb_one_patient_updated.append(pb_one_patient_ssl1[j] * 0.2 + pb_one_patient_ssl2[j] * 0.2 + pb_one_patient_ssl3[j] * 0.6)
-                                elif j == 2: # Probability for pap
-                                    pb_one_patient_updated.append(pb_one_patient_ssl1[j] * 0.6 + pb_one_patient_ssl2[j] * 0.2 + pb_one_patient_ssl3[j] * 0.2)
-                                elif j == 3: # Probability for micropap
-                                    pb_one_patient_updated.append(pb_one_patient_ssl1[j] * 0.6 + pb_one_patient_ssl2[j] * 0.2 + pb_one_patient_ssl3[j] * 0.2)
-                                elif j == 4: # Probability for solid
-                                    pb_one_patient_updated.append(pb_one_patient_ssl1[j] * 0.2 + pb_one_patient_ssl2[j] * 0.2 + pb_one_patient_ssl3[j] * 0.6)
-                                elif j == 5: # Probability for nontumor
-                                    pb_one_patient_updated.append(pb_one_patient_ssl1[j] * 0.2 + pb_one_patient_ssl2[j] * 0.2 + pb_one_patient_ssl3[j] * 0.6)
+                            output3 = model3.forward(image_single)
+                            output_pb3 = F.softmax(output3.cpu(), dim=1)
+                            output_pb3 = output_pb3.numpy().tolist()
+                            output_pb_ensemble = []
+                            for i in range(len(output_pb1)):
+                                pb_one_patient_ssl1 = output_pb1[i]
+                                pb_one_patient_ssl2 = output_pb2[i]
+                                pb_one_patient_ssl3 = output_pb3[i]
+                                pb_one_patient_updated = []
+                                for j in range(len(pb_one_patient_ssl1)):
+                                    pb_one_patient_updated.append(pb_one_patient_ssl1[j] * w1 + pb_one_patient_ssl2[j] * w2 + pb_one_patient_ssl3[j] * w3)
+                                output_pb_ensemble.append(pb_one_patient_updated)
 
-                                
-                            output_pb_ensemble.append(pb_one_patient_updated)
+                            top_ps, top_class = torch.from_numpy(np.asarray(output_pb_ensemble)).topk(1, dim=1)
+                            y_prediction.extend(list(top_class.flatten().numpy()))
+                            y_truth.extend(list(labels.cpu().flatten().numpy()))
+
+                        cnf_matrix = cm(y_truth, y_prediction, labels = [0, 1, 2, 3, 4, 5])
+                        # Compute evaluations
+                        FP = cnf_matrix.sum(axis=0) - np.diag(cnf_matrix)
+                        FN = cnf_matrix.sum(axis=1) - np.diag(cnf_matrix)
+                        TP = np.diag(cnf_matrix)
+                        TN = cnf_matrix.sum() - (FP + FN + TP)
+                        # Convert to float
+                        f_p = FP.astype(float)
+                        f_n = FN.astype(float)
+                        t_p = TP.astype(float)
+                        t_n = TN.astype(float)
+
+                        # Calculate metrics
+                        recall_sensitivity = t_p / (t_p + f_n)
+                        precision = t_p / (t_p + f_p)
+                        f1_score = 2 * (recall_sensitivity * precision / (recall_sensitivity + precision))
+                        # Update best F1 score and weights if necessary
+                        if np.mean(f1_score) > best_f1_score:
+                            best_f1_score = np.mean(f1_score)
+                            best_weights = (w1, w2, w3)
                         
-                        top_ps, top_class = torch.from_numpy(np.asarray(output_pb_ensemble)).topk(1, dim=1)
-                        y_prediction.extend(list(top_class.flatten().numpy()))
-                        y_truth.extend(list(labels.cpu().flatten().numpy()))
+            print("Best weights:", best_weights)
+            print("Best F1 score:", best_f1_score)
 
-                    # Computer metrics
-                    cnf_matrix = cm(y_truth, y_prediction, labels = [0, 1, 2, 3, 4, 5])
-                    print(cnf_matrix)
-                    self.plot_cnf_matrix(fold_index, figures_dir, cnf_matrix, ['lepidic', 'acinar', 'pap', 'micropap', 'solid', 'nontumor'],
-                            normalize=False,
-                            title='Confusion matrix',
-                            cmap=plt.cm.Blues)
-                    # Compute evaluations
-                    FP = cnf_matrix.sum(axis=0) - np.diag(cnf_matrix)
-                    FN = cnf_matrix.sum(axis=1) - np.diag(cnf_matrix)
-                    TP = np.diag(cnf_matrix)
-                    TN = cnf_matrix.sum() - (FP + FN + TP)
-                    # Convert to float
-                    f_p = FP.astype(float)
-                    f_n = FN.astype(float)
-                    t_p = TP.astype(float)
-                    t_n = TN.astype(float)
+            # Test loop using test set after selecting the weights using validation set
+            y_truth, y_prediction, scores = [], [], []
+            for data in testloader:
+                image_combined, image_single, labels = data['image_combined'].to(self.device, dtype=torch.float), data['image_single'].to(self.device, dtype=torch.float), data['label'].to(self.device, dtype=torch.long)
+                output1 = model1.forward(image_combined)
+                output_pb1 = F.softmax(output1.cpu(), dim=1)
+                output_pb1 = output_pb1.numpy().tolist()
 
-                    # Calculate metrics
-                    accuracy = (t_p + t_n) / (f_p + f_n + t_p + t_n)
-                    recall_sensitivity = t_p / (t_p + f_n)
-                    specificity = t_n / (t_n + f_p)
-                    precision = t_p / (t_p + f_p)
-                    f1_score = 2 * (recall_sensitivity * precision / (recall_sensitivity + precision))
+                output2 = model2.forward(image_combined)
+                output_pb2 = F.softmax(output2.cpu(), dim=1)
+                output_pb2 = output_pb2.numpy().tolist()
 
-                    print("Accuracy:{}\nPrecision:{}\nSensitivity:{}\nSpecificity:{}\nF1:{}".format(accuracy,
-                                                                                                        precision, recall_sensitivity, specificity, f1_score))
-        return f1_score
+                output3 = model3.forward(image_single)
+                output_pb3 = F.softmax(output3.cpu(), dim=1)
+                output_pb3 = output_pb3.numpy().tolist()
+
+                output_pb_ensemble = []
+                for i in range(len(output_pb1)):
+                    pb_one_patient_ssl1 = output_pb1[i]
+                    pb_one_patient_ssl2 = output_pb2[i]
+                    pb_one_patient_ssl3 = output_pb3[i]
+                    pb_one_patient_updated = []
+                    for j in range(len(pb_one_patient_ssl1)):
+                        pb_one_patient_updated.append(pb_one_patient_ssl1[j] * best_weights[0] + pb_one_patient_ssl2[j] * best_weights[1] + pb_one_patient_ssl3[j] * best_weights[2])
+                    output_pb_ensemble.append(pb_one_patient_updated)
+                
+                top_ps, top_class = torch.from_numpy(np.asarray(output_pb_ensemble)).topk(1, dim=1)
+                y_prediction.extend(list(top_class.flatten().numpy()))
+                y_truth.extend(list(labels.cpu().flatten().numpy()))
+
+            # Computer metrics
+            cnf_matrix = cm(y_truth, y_prediction, labels = [0, 1, 2, 3, 4, 5])
+            self.plot_cnf_matrix(fold_index, figures_dir, cnf_matrix, ['lepidic', 'acinar', 'pap', 'micropap', 'solid', 'nontumor'],
+                    normalize=True,
+                    title='Confusion matrix',
+                    cmap=plt.cm.Blues)
+            # Compute evaluations
+            FP = cnf_matrix.sum(axis=0) - np.diag(cnf_matrix)
+            FN = cnf_matrix.sum(axis=1) - np.diag(cnf_matrix)
+            TP = np.diag(cnf_matrix)
+            TN = cnf_matrix.sum() - (FP + FN + TP)
+            # Convert to float
+            f_p = FP.astype(float)
+            f_n = FN.astype(float)
+            t_p = TP.astype(float)
+            t_n = TN.astype(float)
+
+            # Calculate metrics
+            recall_sensitivity = t_p / (t_p + f_n)
+            precision = t_p / (t_p + f_p)
+            f1_score = 2 * (recall_sensitivity * precision / (recall_sensitivity + precision))
+
+        return f1_score, best_weights
 
 if __name__ == "__main__":
     # Hyper-param
@@ -195,17 +237,23 @@ if __name__ == "__main__":
     batches = 1
     num_classes = 6
     test_f1_scores = []
+    best_weights_list = []
     for fold_index in range(5):
+        valid_images = 'path_to_validation_images'
         test_images = 'path_to_test_images'
         ssl1_model_path = 'ssl1_model_weights'
         ssl2_model_path = 'ssl2_model_weights'
         ssl3_model_path = 'ssl3_model_weights'
 
         train_obj = TrainModel(num_classes, num_epcohs, batches, fold_index)
-        test_f1_score = train_obj.runtestset(test_images, ssl1_model_path, ssl2_model_path,ssl3_model_path, fold_index)
-        test_f1_scores.append(test_f1_score)
+        f1_scores, best_weights = train_obj.find_best_weights(valid_images, test_images, ssl1_model_path, ssl2_model_path,ssl3_model_path, fold_index)
+        test_f1_scores.append(f1_scores)
+        best_weights_list.append(best_weights)
     
     test_f1_scores = np.asarray(test_f1_scores)
-    print('All folds f1 scores ', test_f1_scores, 3)
+    print('All f1 scores')
+    print('', test_f1_scores, 3)
     print('Average test f1 scores ', np.nanmean(test_f1_scores, axis = 0))
     print('Standard deviation test f1 scores ', np.nanstd(test_f1_scores, axis = 0))
+    print('Best weights')
+    print(best_weights_list)
