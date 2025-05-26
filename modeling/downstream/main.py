@@ -6,22 +6,13 @@ import numpy as np
 import torchvision.transforms as transforms
 from dataloader import DataProcessor
 import torch.nn.functional as F
-from itertools import cycle
 import matplotlib.pyplot as plt
-from scipy import interp
 from torch.utils.data import DataLoader
 from sklearn.metrics import confusion_matrix as cm
 import os
 from glob import glob
 from model import ModifiedResNet
-
-NUM_CHANNEL = 6
-FIGURE_DIR = './saved_figures'
-MODEL_DIR = './saved_models'
-if not os.path.exists(FIGURE_DIR):
-    os.makedirs(FIGURE_DIR)
-if not os.path.exists(MODEL_DIR):
-    os.makedirs(MODEL_DIR)
+import argparse
 
 class TrainModel:
     def __init__(self, num_classes, num_epochs, batch_size, learning_rate, fold_index):
@@ -85,7 +76,7 @@ class TrainModel:
 
     def start_training(self, path_to_train, path_to_valid):
         train_dataset = DataProcessor(imgs_dir=path_to_train, channel = NUM_CHANNEL, transformations=self._get_default_transforms())
-        valid_dataset = DataProcessor(imgs_dir=path_to_valid, channel = NUM_CHANNEL, transformations=self._get_default_transforms())
+        valid_dataset = DataProcessor(imgs_dir=path_to_valid, channel = NUM_CHANNEL, transformations=None)
         
         print("="*40)
         print("Images for Training:", len(train_dataset))
@@ -98,7 +89,7 @@ class TrainModel:
         model = ModifiedResNet(self.num_classes, self.device, NUM_CHANNEL).to(self.device)
 
         # # Self supervised pretraining weights
-        weights = torch.load(os.path.join('path_to_model'), map_location=self.device)
+        weights = torch.load(glob(os.path.join(path_to_ssl_model_weights, '*.pth'))[0], map_location=self.device)
         model.load_state_dict({'backbone.' + k[0:]:v for k, v in weights.items()}, strict=False)
        
         optimizer = optim.Adam(model.parameters(), lr=self.learning_rate, weight_decay=1e-4)
@@ -116,7 +107,7 @@ class TrainModel:
 
         # Training loop
         epoch = 0
-        while early_stopping_count <= 10 and epoch <= self.epochs:
+        while early_stopping_count < 10 and epoch < self.epochs:
             print("-"*40)
             epoch += 1
             print('Epoch ', epoch)
@@ -335,16 +326,36 @@ class TrainModel:
         return f1_score
     
 if __name__ == "__main__":
-    # Hyper-param
-    num_epcohs = 200
-    batches = 16
-    learning_rate = 0.0001
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--path_to_all_images', type = str, default = None, help = 'parent path to all the images')
+    parser.add_argument('--path_to_ssl_model_weights', type = str, default = None, help = 'the folder that contains the path to the SSL-pretrained model')
+    parser.add_argument('--num_image_channels', type = int, default = 6, help = 'the number of channels for the images. 6 for SSL1 and 2, 3 for SSL3.')
+    parser.add_argument('--num_epochs', type = int, default = 200, help = 'the maximum number of training epochs')
+    parser.add_argument('--batches', type = int, default = 32, help = 'batch size')
+    parser.add_argument('--learning_rate', type = float, default = 1e-4, help = 'learning rate')
+
+    args = parser.parse_args()
+
+    num_epcohs = args.num_epochs
+    batches = args.batches
+    learning_rate = args.learning_rate
+    root_dir_for_images = args.path_to_all_images
+    path_to_ssl_model_weights = args.path_to_ssl_model_weights
+    NUM_CHANNEL = args.num_image_channels
+
+    FIGURE_DIR = './saved_figures'
+    MODEL_DIR = './saved_models'
+    if not os.path.exists(FIGURE_DIR):
+        os.makedirs(FIGURE_DIR)
+    if not os.path.exists(MODEL_DIR):
+        os.makedirs(MODEL_DIR)
+
     num_classes = 6
     test_f1_scores = []
     for fold_index in range(5):
-        train_images = 'path_to_train_images'
-        valid_images = 'path_to_validation_images'    
-        test_images = 'path_to_test_images'    
+        train_images = glob(os.path.join(root_dir_for_images, 'fold' + str(fold_index), 'train', '*', '*.png'))
+        valid_images = glob(os.path.join(root_dir_for_images, 'fold' + str(fold_index), 'val', '*', '*.png'))
+        test_images = glob(os.path.join(root_dir_for_images, 'fold' + str(fold_index), 'test', '*', '*.png'))
         train_obj = TrainModel(num_classes, num_epcohs, batches, learning_rate, fold_index)
         train_obj.start_training(train_images, valid_images)
         test_f1_score = train_obj.runtestset(test_images)

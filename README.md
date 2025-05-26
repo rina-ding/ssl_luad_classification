@@ -5,80 +5,56 @@ Lung adenocarcinoma (LUAD) is a morphologically heterogeneous disease with five 
 
 ![overview](overview.png)
 
-## Directory structure
-```
-    preprocessing
-    ├── generate_tiles.py    # Generate tiles from a whole slide image      
-    ├── util.py # Helper functions for generating tiles          
-    ├── generate_tiles_4_magnification_levels_contextual.py # Generate tiles for JigMag task where the 4 tiles of different magnifications have contextual relationship with each other.  
-    ├── generate_low_high_magnification_image_pairs.py # Generate higher magnification tiles from a lower magnification tile based on the downsampling factor
-    ├── stain_separation.py # Stain separation to get H-stained and E-stained images 
-
-    modeling
-    ├── proposed_ssl1                    # Implementation for proposed SSL task 1
-    │   ├── dataloader.py             # Dataloader
-    │   ├── model.py            # Model architecture
-    │   └── main.py         # Train and validation
-    ├── proposed_ssl2         # Implementation for proposed SSL task 2
-    │   ├── dataloader.py             # Dataloader
-    │   ├── model.py            # Model architecture
-    │   └── main.py         # Train and validation
-    ├── proposed_ssl3         # Implementation for proposed SSL task 3
-    │   ├── dataloader.py             # Dataloader
-    │   ├── model.py            # Model architecture
-    │   └── main.py         # Train and validation       
-    ├── baseline_ssl_byol     # Implementation for contrastive learning method BYOL
-    │   ├── dataloader.py             # Dataloader
-    │   ├── model.py            # Model architecture
-    │   └── main.py         # Train and validation
-    ├── baseline_ssl_simsiam  # Implementation for contrastive learning method SimSiam
-    │   ├── dataloader.py             # Dataloader
-    │   ├── model.py            # Model architecture
-    │   └── main.py         # Train and validation
-    ├── baseline_ssl_magnification_level_prediction # Implementation for tile magnification level prediction model
-    │   ├── dataloader.py             # Dataloader
-    │   ├── model.py            # Model architecture
-    │   └── main.py         # Train and validation
-    ├── baseline_ssl_jigmag   # Implementation for JigMag
-    │   ├── dataloader.py             # Dataloader
-    │   ├── model.py            # Model architecture
-    │   └── main.py         # Train and validation
-    ├── downstream            # Implementation for downstream individual classification model
-    │   ├── dataloader.py             # Dataloader
-    │   ├── model.py            # Model architecture
-    │   └── main.py         # Five-fold cross validation including train, validation, and test
-    ├── downstream_ensemble   # Implementation for downstream ensemble model
-    │   ├── dataloader.py             # Dataloader
-    │   ├── model.py            # Model architecture
-    │   └── main.py         # Ensembling predictions from the individual SSL-pretrained downstream models
-    │   └── model_weights
-        │   └── proposed_ssl1 # Trained weights for proposed SSL1-pretrained downstream model
-        │   └── proposed_ssl2 # Trained weights for proposed SSL2-pretrained downstream model
-        │   └── proposed_ssl3 # Trained weights for proposed SSL3-pretrained downstream model
-```
 ## Instructions 
 ### Required packages
-Build the docker using `./requirements/Dockerfile`.
+First, create a pytorch docker container using:
 ```
-docker run --user $(id -u):$(id -g) -it --gpus all --rm -v <volume_to_be_mounted> -v /etc/localtime:/etc/localtime:ro requirements:v1
+docker run  --shm-size=2g --gpus all -it --rm -v /:/workspace -v /etc/localtime:/etc/localtime:ro nvcr.io/nvidia/pytorch:24.02-py3
 ```
+Then install all packages listed [here](./requirements/pip_commands.sh) by running the following commands:
+
+```
+cd ssl_luad_classification
+```
+
+```
+chmod +x pip_commands.sh
+```
+```
+./pip_commands.sh
+```
+
+More information on the pytorch docker container `nvcr.io/nvidia/pytorch:24.02-py3` can be found here(https://catalog.ngc.nvidia.com/orgs/nvidia/containers/pytorch/tags).
+
 
 ### Preprocessing
-Download NLST data from [NLST](https://wiki.cancerimagingarchive.net/display/NLST/NLST+Pathology), download TCGA data from [TCGA-LUAD](https://portal.gdc.cancer.gov/projects/TCGA-LUAD), and download CPTAC data from [CPTAC](https://wiki.cancerimagingarchive.net/pages/viewpage.action?pageId=33948253).
 
-Use [generate_tiles.py](./preprocessing/generate_tiles.py) to generate tiles of specified magnification level specified by `mag_level (string)`, the parent folder path containing all patients and slides `wsi_root_path`, destination folder path `wsi_tiles_root_dir`, and cohort name `cohort_name`('nlst', 'tcga', 'cptac').  
-Use [get_low_high_magnification_image_pairs.py](./preprocessing/get_low_high_magnification_image_pairs.py) to generate tiles pairs by specifying magnification level of the lower magnification tile at `mag_level (string)`, the parent folder path containing all patients and slides `wsi_root_path`, destination folder path`wsi_tiles_root_dir`, and cohort name `cohort_name`('nlst', 'tcga').  
-Use [stain_separation.py](./preprocessing/stain_separation.py) to generate H-stained image tiles and E-stained image tiles. Change the parent folder path containing all tiles that need to be stain separated using `input_root_path` and the parent folder path for storing stain separated tiles using`dest_root_path`.
+- Datasets: Download NLST data from [NLST](https://wiki.cancerimagingarchive.net/display/NLST/NLST+Pathology), download TCGA data from [TCGA-LUAD](https://portal.gdc.cancer.gov/projects/TCGA-LUAD), and download CPTAC data from [CPTAC](https://wiki.cancerimagingarchive.net/pages/viewpage.action?pageId=33948253).
 
 Each dataset's folder structure should be:
 ```
   ├── <patient_id>                   
   │   ├── <slide_id>   
 ```
-### Modeling
-For any model, run `main.py` after changing the train (`train_images`), validation (`valid_images`), and/or test image (`test_images`) paths accordingly.  
 
-For proposed SSL 1 and 2, the input folder structure should be:
+- SSL 1 and 2 data prep: 
+```
+cd ./preprocessing
+```
+
+```
+python get_low_high_magnification_image_pairs.py --wsi_level <wsi_level> --tile_size <tile_size> --downsample_factor <downsample_factor> --path_to_wsi_images <> --path_to_generated_tiles <>
+```
+
+An example command for when using WSIs that have 40x objective magnification:
+```
+python get_low_high_magnification_image_pairs.py --wsi_level 2 --tile_size 512 --downsample_factor 16 --path_to_wsi_images <> --path_to_generated_tiles <>
+```
+
+`path_to_wsi_images` is the parent path to the WSIs, structured in the format mentioned above.
+`path_to_generated_tiles` is the parent path to the generated tiles.
+
+After running this script, you should get output data in the following structure within your specified `path_to_generated_tiles` (specifically under `/<path_to_generated_tiles>/train_ssl1` for training data and `/<path_to_generated_tiles>/val_ssl1` for SSL1 and similarly for SSL2):
 
 ```
   ├── train                   
@@ -86,14 +62,33 @@ For proposed SSL 1 and 2, the input folder structure should be:
       │   ├── <path_to_low_magnification_image.png>
       │   ├── <path_to_high_magnification_image.png>
       ├── ...
-  ├── validation                  
+  ├── val                  
   │   ├── <path_to_a_low_high_magnification_image_pair>
       │   ├── <path_to_low_magnification_image.png>
       │   ├── <path_to_high_magnification_image.png>
       ├── ...
 
 ```
-For proposed SSL 3, the input folder structure should be:
+
+- SSL 3 data prep:
+```
+cd ./preprocessing
+```
+
+First run `generate_tiles.py` to get tiles from the WSIs.
+```
+python generate_tiles.py --wsi_level <wsi_level> --tile_size <tile_size> --downsample_factor <downsample_factor> --path_to_wsi_images <> --path_to_generated_tiles <>
+```
+
+Second, run `stain_separation.py` to get the SSL 3 data.
+```
+python stain_separation.py ----path_to_input_tiles <> ----path_to_output_tiles
+```
+
+where `path_to_input_tiles` should be the same path as the `path_to_generated_tiles` from the `generate_tile.py` step.
+
+After running this script, you should get output data in the following structure within your specified `path_to_output_tiles` (specifically under `/<path_to_output_tiles>/train` for training data and `/<path_to_output_tiles>/val` for validation data):
+
 ```
   ├── train                   
   │   ├── <path_to_h_stain_images>
@@ -104,7 +99,7 @@ For proposed SSL 3, the input folder structure should be:
       │   ├── <path_to_image1.png>
       │   ├── <path_to_image2.png>
       │   ├── ...
-  ├── validation       
+  ├── val       
   │   ├── <path_to_h_stain_images>
       │   ├── <path_to_image1.png>
       │   ├── <path_to_image2.png>
@@ -114,29 +109,202 @@ For proposed SSL 3, the input folder structure should be:
       │   ├── <path_to_image2.png>
       │   ├── ...
 ```
+
+
+### Modeling
+
+#### For SSL 1:
+
+```
+cd ./modeling/proposed_ssl1
+```
+
+```
+CUDA_VISIBLE_DEVICES=0 python main.py --path_to_train_images <> --path_to_val_images <>
+```
+
+`path_to_train_images` is the parent path to the training images generated from the preprocessing step, specifically under `/<path_to_generated_tiles>/train_ssl1`.
+
+`path_to_val_images` is the parent path to the validation images generated from the preprocessing step, specifically under `/<path_to_generated_tiles>/val_ssl1`.
+
+#### For SSL 2:
+
+```
+cd ./modeling/proposed_ssl2
+```
+
+```
+CUDA_VISIBLE_DEVICES=0 python main.py --path_to_train_images <> --path_to_val_images <>
+```
+
+`path_to_train_images` is the parent path to the training images generated from the preprocessing step, specifically under `/<path_to_generated_tiles>/train_ssl2`.
+
+`path_to_val_images` is the parent path to the validation images generated from the preprocessing step, specifically under `/<path_to_generated_tiles>/val_ssl2`.
+
+#### For SSL 3:
+
+```
+cd ./modeling/proposed_ssl3
+```
+
+```
+CUDA_VISIBLE_DEVICES=0 python main.py --path_to_train_images <> --path_to_val_images <>
+```
+
+`path_to_train_images` is the parent path to the training images generated from the preprocessing step, specifically under `/<path_to_output_tiles>/train`.
+
+`path_to_val_images` is the parent path to the validation images generated from the preprocessing step, specifically under `/<path_to_output_tiles>/val`.
+
+For all SSL models, the optional input arguments are:
+
+`num_epochs`: the maximum number of training epochs
+
+`batches`: batch size
+
+`learning_rate`: learning rate
+
+`train_from_interrupted_model`: whether to train model from previously saved complete checkpoints
+
+- Model weights
+
+[ssl1_trained_model.pth](./modeling/proposed_ssl1/ssl1_trained_model.pth)
+
+[ssl2_trained_model.pth](./modeling/proposed_ssl2/ssl2_trained_model.pth)
+
+[ssl3_trained_model.pth](./modeling/proposed_ssl3/ssl3_trained_model.pth)
+
+
+#### For downstream modeling
+
+- Step 1: Train a downstream model using a SSL-pretrained model
+
+Since we have 3 SSL-pretrained models, we will train 3 different downstream models.
+
+For each downstream model, do:
+
+```
+cd ./modeling/downstream
+```
+
+```
+CUDA_VISIBLE_DEVICES=0 python main.py --path_to_all_images <> --path_to_ssl_model_weights <>
+```
+
+`path_to_all_images` is the parent path that contains all folds' train, val, and test data, organized in the following structure:
+
+- Downstream data format
 For downstream model, the input folder structure should be:
 ```
-  ├── train                   
-  │   ├── <path_to_a_folder_containing_one_tissue_class>
-      │   ├── <path_to_image1.png>
-      │   ├── <path_to_image2.png>
-      │   ├── ...
-      ├── ...
-  ├── validation       
-  │   ├── <path_to_a_folder_containing_one_tissue_class>
-      │   ├── <path_to_image1.png>
-      │   ├── <path_to_image2.png>
-      │   ├── ...    
-      ├── ...        
-  ├── test      
-  │   ├── <path_to_a_folder_containing_one_tissue_class>
-      │   ├── <path_to_image1.png>
-      │   ├── <path_to_image2.png>
-      │   ├── ... 
-      ├── ...         
+  ├── fold0        
+  │   ├── train
+    │   ├── <path_to_a_folder_containing_one_tissue_class>
+        │   ├── <path_to_image1.png>
+        │   ├── <path_to_image2.png>
+        │   ├── <...>
+  │   ├── val
+    │   ├── <path_to_a_folder_containing_one_tissue_class>
+        │   ├── <path_to_image1.png>
+        │   ├── <path_to_image2.png>
+        │   ├── <...>
+  │   ├── test
+    │   ├── <path_to_a_folder_containing_one_tissue_class>
+        │   ├── <path_to_image1.png>
+        │   ├── <path_to_image2.png>
+        │   ├── <...>
+
+  ├── fold1        
+  │   ├── train
+    │   ├── <path_to_a_folder_containing_one_tissue_class>
+        │   ├── <path_to_image1.png>
+        │   ├── <path_to_image2.png>
+        │   ├── <...>
+  │   ├── val
+    │   ├── <path_to_a_folder_containing_one_tissue_class>
+        │   ├── <path_to_image1.png>
+        │   ├── <path_to_image2.png>
+        │   ├── <...>
+  │   ├── test
+    │   ├── <path_to_a_folder_containing_one_tissue_class>
+        │   ├── <path_to_image1.png>
+        │   ├── <path_to_image2.png>
+        │   ├── <...>
+
+...(fold 2, 3)
+  ├── fold4        
+  │   ├── train
+    │   ├── <path_to_a_folder_containing_one_tissue_class>
+        │   ├── <path_to_image1.png>
+        │   ├── <path_to_image2.png>
+        │   ├── <...>
+  │   ├── val
+    │   ├── <path_to_a_folder_containing_one_tissue_class>
+        │   ├── <path_to_image1.png>
+        │   ├── <path_to_image2.png>
+        │   ├── <...>
+  │   ├── test
+    │   ├── <path_to_a_folder_containing_one_tissue_class>
+        │   ├── <path_to_image1.png>
+        │   ├── <path_to_image2.png>
+        │   ├── <...>
+
 ```
 
+The optional input arguments are:
 
+`num_epochs`: the maximum number of training epochs
 
+`batches`: batch size
 
+`learning_rate`: learning rate
+
+- Model weights
+
+SSL1-pretrained downstream model: `./modeling/downstream_ensemble/individual_downstream_model_weights/proposed_ssl1`
+
+SSL2-pretrained downstream model: `./modeling/downstream_ensemble/individual_downstream_model_weights/proposed_ssl2`
+
+SSL3-pretrained downstream model: `./modeling/downstream_ensemble/individual_downstream_model_weights/proposed_ssl3`
+
+- Step 2: Combine the predictions of the 3 downstream models in an ensemble framework
+
+First, you need to put the 3 downstream model weights into a folder called `individual_downstream_model_weights` under `./modeling/downstream_ensemble`. 
+
+```
+├── individual_downstream_model_weights        
+  │   ├── proposed_ssl1
+    │   ├── resnet18_fold0.pth
+    │   ├── resnet18_fold1.pth
+    │   ├── resnet18_fold2.pth
+    │   ├── resnet18_fold3.pth
+    │   ├── resnet18_fold4.pth
+
+  │   ├── proposed_ssl2
+    │   ├── resnet18_fold0.pth
+    │   ├── resnet18_fold1.pth
+    │   ├── resnet18_fold2.pth
+    │   ├── resnet18_fold3.pth
+    │   ├── resnet18_fold4.pth
+
+  │   ├── proposed_ssl3
+    │   ├── resnet18_fold0.pth
+    │   ├── resnet18_fold1.pth
+    │   ├── resnet18_fold2.pth
+    │   ├── resnet18_fold3.pth
+    │   ├── resnet18_fold4.pth
+```
+
+Then do:
+
+```
+cd ./modeling/downstream_ensemble
+```
+
+```
+CUDA_VISIBLE_DEVICES=0 python main.py --path_to_all_images
+```
+`path_to_all_images` is the parent path that contains all folds' train, val, and test data, the same as the last step.
+
+This script finds the best weight for each individual downstream model's prediction probability and do a weighted emsemble across the 3 models.
+
+Finally it will print out the average F1 score on the test sets.
 

@@ -7,10 +7,14 @@ from itertools import groupby
 import random
 import math
 import shutil
+
+import sys
+sys.path.append('./spams-python')
 import spams
 import cv2
 import numpy as np
 from PIL import Image
+import argparse
 
 IMAGE_SIZE = 224
 class vahadane(object):
@@ -192,24 +196,89 @@ def mask_percent(np_img):
     white_percentage = ((np.sum(np_img >= p)) / np_img.size * 100)
   return black_percentage, white_percentage
 
-if __name__ == "__main__":
-    input_root_path = 'path_to_tiles_that_need_to_be_stain_separated'
-    input_dir = natsorted(glob_function(os.path.join(input_root_path)))
-    dest_root_path = 'path_to_generated_stains'
-    input_dir_e_stain = natsorted(glob_function(os.path.join(dest_root_path)))
+def organize_stain_prediction_data_and_train_val_split(input_dir_he_root, input_dir_h_root, input_dir_e_root, output_dir):
+  
+  for i in range(len(input_dir_he_root)):
+    input_dir_he = input_dir_he_root[i]
+    input_dir_h = input_dir_h_root[i]
+    input_dir_e = input_dir_e_root[i]
+    all_pngs_he = glob_function(os.path.join(input_dir_he, '*.png'))
+    all_pngs_h = glob_function(os.path.join(input_dir_h, '*.png'))
+    all_pngs_e = glob_function(os.path.join(input_dir_e, '*.png'))
+    if len(all_pngs_he) == len(all_pngs_e) and len(all_pngs_he) == len(all_pngs_h):
+        print(input_dir_he)
+        he_train_path = os.path.join(output_dir, 'train', 'he_stain')
+        h_train_path = os.path.join(output_dir, 'train', 'h_stain')
+        e_train_path = os.path.join(output_dir, 'train', 'e_stain')
+        he_val_path = os.path.join(output_dir, 'val', 'he_stain')
+        h_val_path = os.path.join(output_dir, 'val', 'h_stain')
+        e_val_path = os.path.join(output_dir, 'val', 'e_stain')
 
-    for i in range(len(input_dir)):
-        print(i)
-        print(input_dir[i])
-        imgs = natsorted(glob_function(os.path.join(input_dir[i], '*.png')))
-        e_stain_imgs = natsorted(glob_function(os.path.join(input_dir_e_stain[i], '*.png')))
-        for img_index in range(len(imgs)):
-            np_img = np.asarray(Image.open(imgs[img_index]))
-            black_percentage, white_percentage = mask_percent(np_img)
-            if black_percentage >= 60 or white_percentage >= 60:
-                print(black_percentage, white_percentage)
-                os.remove(imgs[img_index])
-                os.remove(e_stain_imgs[img_index])
-                print('Removed ', imgs[img_index])
-        
-        run_stain_separation_H_E_stain(input_dir[i])
+        if not os.path.exists(he_train_path):
+            os.makedirs(he_train_path)
+        if not os.path.exists(he_val_path):
+            os.makedirs(he_val_path)
+
+        if not os.path.exists(h_train_path):
+            os.makedirs(h_train_path)
+        if not os.path.exists(h_val_path):
+            os.makedirs(h_val_path)
+
+        if not os.path.exists(e_train_path):
+            os.makedirs(e_train_path)
+        if not os.path.exists(e_val_path):
+            os.makedirs(e_val_path)
+
+        total_num_pngs = len(glob_function(os.path.join(input_dir_he, '*.png')))
+
+        all_indices = list(range(total_num_pngs))
+        train_size = math.floor(total_num_pngs * 0.8)
+        train_indices = random.sample(all_indices, train_size)
+        val_indices = list(set(all_indices) - set(train_indices))
+
+        train_pngs_he = [all_pngs_he[index] for index in train_indices]
+        val_pngs_he = [all_pngs_he[index] for index in val_indices]
+        train_pngs_h = [all_pngs_h[index] for index in train_indices]
+        val_pngs_h = [all_pngs_h[index] for index in val_indices]
+        train_pngs_e = [all_pngs_e[index] for index in train_indices]
+        val_pngs_e = [all_pngs_e[index] for index in val_indices]
+
+        for train_png in train_pngs_he:
+            shutil.copy(train_png, he_train_path)
+        for val_png in val_pngs_he:
+            shutil.copy(val_png, he_val_path)
+
+        for train_png in train_pngs_h:
+            shutil.copy(train_png, h_train_path)
+        for val_png in val_pngs_h:
+            shutil.copy(val_png, h_val_path)
+
+        for train_png in train_pngs_e:
+            shutil.copy(train_png, e_train_path)
+        for val_png in val_pngs_e:
+            shutil.copy(val_png, e_val_path)
+
+    print(len(glob_function(os.path.join(output_dir, 'train', 'he_stain', '*'))))
+    print(len(glob_function(os.path.join(output_dir, 'val', 'he_stain', '*'))))
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--path_to_input_tiles', type = str, default = None, help = 'path_to_tiles_that_need_to_be_stain_separated')
+    parser.add_argument('--path_to_output_tiles', type = str, default = None, help = 'path to the stain separated files prepared for the modeling')
+
+    args = parser.parse_args()
+
+    input_root_path = args.path_to_input_tiles
+    input_dir = natsorted(glob_function(os.path.join(input_root_path, '*', 'tiles_png')))
+    dest_dir = args.path_to_output_tiles
+ 
+    # for i in range(len(input_dir)):
+    #     print(i)
+    #     print(input_dir[i])
+    #     run_stain_separation_H_E_stain(input_dir[i])
+    
+    input_dir_he = natsorted(glob_function(os.path.join(input_root_path, '*', 'tiles_png')))
+    input_dir_h = natsorted(glob_function(os.path.join(input_root_path, '*', 'tiles_png_H_stain')))
+    input_dir_e = natsorted(glob_function(os.path.join(input_root_path, '*', 'tiles_png_E_stain')))
+    output_dir = dest_dir
+    organize_stain_prediction_data_and_train_val_split(input_dir_he, input_dir_h, input_dir_e, output_dir)

@@ -1,27 +1,18 @@
 
 import torch.optim as optim
 import torch
-import torch.nn as nn
 import numpy as np
 import torchvision.transforms as transforms
-import torchvision
 from model_byol import BYOL
 from dataloader_byol import DataProcessor
-import torch.nn.functional as F
-from itertools import cycle
 import matplotlib.pyplot as plt
-from scipy import interp
 from torch.utils.data import DataLoader
 from sklearn.metrics import confusion_matrix as cm
 import os
 from glob import glob
+import argparse
 
-FIGURE_DIR = './saved_figures'
-MODEL_DIR = './saved_models'
-if not os.path.exists(FIGURE_DIR):
-    os.makedirs(FIGURE_DIR)
-if not os.path.exists(MODEL_DIR):
-    os.makedirs(MODEL_DIR)
+
 class TrainModel:
     def __init__(self, num_epochs, batch_size, learning_rate):
         self.epochs = num_epochs
@@ -85,7 +76,7 @@ class TrainModel:
             early_stopping_count = checkpoint['early_stopping_count']
             epoch = checkpoint['epoch']
 
-        while early_stopping_count <= 10 and epoch <= self.epochs:
+        while early_stopping_count < 10 and epoch < self.epochs:
             epoch += 1
             print('Epoch ', epoch)
             running_train_loss, running_val_loss = 0.0, 0.0
@@ -163,11 +154,28 @@ class TrainModel:
             plt.clf()
 
 if __name__ == "__main__":
-    # Hyper-param
-    num_epcohs = 100
-    batches = 128
-    learning_rate_initial = 0.01
-    train_images = 'path_to_train_images'
-    valid_images = 'path_to_validation_images'     
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--path_to_train_images', type = str, default = None, help = 'parent path to the training images')
+    parser.add_argument('--path_to_val_images', type = str, default = None, help = 'parent path to the validation images')
+    parser.add_argument('--num_epochs', type = int, default = 200, help = 'the maximum number of training epochs')
+    parser.add_argument('--batches', type = int, default = 128, help = 'batch size')
+    parser.add_argument('--learning_rate', type = float, default = 1e-2, help = 'learning rate')
+    parser.add_argument('--train_from_interrupted_model', type = bool, default = False, help = 'whether to train model from previously saved complete checkpoints')
+
+    args = parser.parse_args()
+
+    num_epcohs = args.num_epochs
+    batches = args.batches
+    learning_rate_initial = args.learning_rate
+    
+    train_images = args.path_to_train_images
+    val_images = args.path_to_val_images
+
+    FIGURE_DIR = './saved_figures'
+    MODEL_DIR = './saved_models'
+    if not os.path.exists(FIGURE_DIR):
+        os.makedirs(FIGURE_DIR)
+    if not os.path.exists(MODEL_DIR):
+        os.makedirs(MODEL_DIR)
     train_obj = TrainModel(num_epcohs, batches, learning_rate_initial)
-    train_obj.start_training(train_images, valid_images, train_from_interrupted_model = False)
+    train_obj.start_training(train_images, val_images, train_from_interrupted_model = False)

@@ -1,9 +1,6 @@
 import torchvision
 import torch
 import torch.nn as nn
-import torch.nn.functional as F 
-import numpy as np
-from copy import deepcopy
 from torchvision.models.resnet import ResNet
 from torchvision.models.resnet import BasicBlock
 
@@ -11,9 +8,6 @@ class ModifiedResNet(nn.Module):
     def __init__(self, num_classes, device, num_channel, backbone = torchvision.models.resnet18()):
         super().__init__()
         self.backbone = backbone
-        # weights = torch.load('/workspace/modeling/resnet18-f37072fd.pth', map_location=device)
-        # if num_channel == 3:
-        #     self.backbone.load_state_dict(weights, strict=True)
         self.backbone.conv1 = nn.Conv2d(num_channel, 64, kernel_size=7, stride=2, padding=3,bias=False)
         self.backbone = torch.nn.Sequential(*(list(self.backbone.children())[:-1])) # Removing the FC layer
         self.predictor = nn.Sequential(nn.Flatten(), nn.Dropout(p = 0.2), nn.Linear(512, num_classes))
@@ -47,21 +41,13 @@ class ResNetEncoder(ResNet):
     def forward(self, x):
         stages = self.get_stages()
         x = stages[0](x)
-        # print('x shape', x.shape)
         x = stages[1](x)
-        # print('x shape', x.shape)
         x = stages[2](x)
-        # print('x shape', x.shape)
         x = stages[3](x)
-        # print('x shape', x.shape)
         x = stages[4](x)
-        # print('x shape', x.shape)
         x = stages[5](x)
-        # print('x shape', x.shape)
         x = stages[6](x)
-        # print('x shape', x.shape)
         x = stages[7](x)
-        # print('x shape', x.shape)
         return x
 
     def load_state_dict(self, state_dict, **kwargs):

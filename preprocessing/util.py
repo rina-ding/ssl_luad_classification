@@ -1,27 +1,147 @@
 
-# Copied from https://github.com/deroneriksson/python-wsi-preprocessing/blob/master/docs/wsi-preprocessing-in-python/index.md
-# ------------------------------------------------------------------------
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-# ------------------------------------------------------------------------
-
+from glob import glob
+import os
+from natsort import natsorted
+import shutil
+from itertools import groupby
+import random
+import math
+import shutil
+import pandas as pd
+from random import randrange
+from operator import itemgetter
+from glob import glob
 import datetime
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
+import re
 
 # If True, display additional NumPy array stats (min, max, mean, is_binary).
 ADDITIONAL_NP_STATS = False
+
+
+def train_val_split(all_dir, train_dir, val_dir):
+  random.shuffle(all_dir)
+  for i in range(math.floor(len(all_dir)*0.8)):
+    shutil.move(all_dir[i], train_dir)
+  for i in range(math.floor(len(all_dir)*0.8), len(all_dir)):
+    shutil.move(all_dir[i], val_dir)
+ 
+  print('Train sample size ', len(glob(os.path.join(train_dir, '*'))))
+  print('Val sample size ', len(glob(os.path.join(val_dir, '*'))))
+  
+
+def organize_and_split_ss1_data(wsi_tiles_root_dir, dest_dir):
+
+  dest_dir_train_val = os.path.join(dest_dir, 'train_plus_val_ssl1')
+  if not os.path.exists(dest_dir_train_val):
+    os.makedirs(dest_dir_train_val)
+
+  wsi_tiles_dirs = sorted(glob(os.path.join(wsi_tiles_root_dir, '*')))
+
+  for i in range(len(wsi_tiles_dirs)):
+    print(wsi_tiles_dirs[i])
+    all_tiles = natsorted(glob(os.path.join(wsi_tiles_dirs[i], 'low_high_magnification_pairs_png', '*.png')))    
+    all_lower_mag_tiles = natsorted(glob(os.path.join(wsi_tiles_dirs[i], 'low_high_magnification_pairs_png', '*lower_mag_tile.png')))
+
+    if len(all_tiles) >=34: # 34 means we have at least 2 lower-magnification tiles. Each lower-magnification tile derives 16 higher-magnification tile. 1+16 = 17. And 17 x 2 = 34
+      for j in range(len(all_tiles)):
+        if j % 17 == 0: 
+          if j <= len(all_tiles) - 17:
+            tile_lower_magnification = all_tiles[j]
+            tiles_higher_magnification = all_tiles[j+1:j+17] 
+
+            # Positive pairs
+            nth_tile = 0
+            for tile_higher_magnification in tiles_higher_magnification:
+              nth_tile += 1
+              positive_pair_dir = os.path.join(dest_dir_train_val, 'yes_' + os.path.basename(wsi_tiles_dirs[i]) + '_' + os.path.basename(tile_lower_magnification).replace('-lower_mag_tile.png', '_' + str(nth_tile)))
+            
+              if not os.path.exists(positive_pair_dir):
+                os.makedirs(positive_pair_dir)
+              shutil.copy(tile_lower_magnification, positive_pair_dir)
+              shutil.copy(tile_higher_magnification, positive_pair_dir)
+
+            # Negative pairs
+            current_lower_mag_tile_index = all_lower_mag_tiles.index(tile_lower_magnification)
+            random_negative_lower_mag_tile = all_lower_mag_tiles[random.choice([*range(current_lower_mag_tile_index), *range(current_lower_mag_tile_index + 1, len(all_lower_mag_tiles))])]
+            random_negative_lower_mag_tile_index = all_tiles.index(random_negative_lower_mag_tile)
+            random_negative_higher_mag_tiles = all_tiles[random_negative_lower_mag_tile_index + 1 : random_negative_lower_mag_tile_index + 17]
+            nth_tile = 0
+            for negative_tile_higher_mag in random_negative_higher_mag_tiles:
+              nth_tile += 1
+              negative_pair_dir = os.path.join(dest_dir_train_val, 'no_' + os.path.basename(wsi_tiles_dirs[i]) + '_' + os.path.basename(tile_lower_magnification).replace('-lower_mag_tile.png', '_' + str(nth_tile)))
+              
+              if not os.path.exists(negative_pair_dir):
+                os.makedirs(negative_pair_dir)
+              shutil.copy(tile_lower_magnification, negative_pair_dir)
+              shutil.copy(negative_tile_higher_mag, negative_pair_dir)
+    
+    dest_dir_train = os.path.join(dest_dir, 'train_ssl1')
+    if not os.path.exists(dest_dir_train):
+      os.makedirs(dest_dir_train)
+    
+    dest_dir_val = os.path.join(dest_dir, 'val_ssl1')
+    if not os.path.exists(dest_dir_val):
+      os.makedirs(dest_dir_val)
+
+    train_val_split(glob(os.path.join(dest_dir_train_val, '*')), dest_dir_train, dest_dir_val)
+
+def extract_r_c_key(text):
+    """
+    Extract r and c values from the filename like '...-r1-c15-...'
+    and return a string like 'r1-c15' to group by.
+    """
+    r_match = re.search(r"-r(\d+)", text)
+    c_match = re.search(r"-c(\d+)", text)
+    if r_match and c_match:
+        return f"r{r_match.group(1)}-c{c_match.group(1)}"
+    else:
+        return "unknown"
+
+def organize_and_split_ss2_data(wsi_tiles_root_dir, dest_dir):
+  dest_dir_train_val = os.path.join(dest_dir, 'train_plus_val_ssl2')
+  if not os.path.exists(dest_dir_train_val):
+    os.makedirs(dest_dir_train_val)
+
+  wsi_tiles_dirs = sorted(glob(os.path.join(wsi_tiles_root_dir, '*')))
+
+  for case in range(len(wsi_tiles_dirs)):
+    pid = os.path.basename(wsi_tiles_dirs[case])
+    print(wsi_tiles_dirs[case])
+    all_tiles = natsorted(glob(os.path.join(wsi_tiles_dirs[case], 'low_high_magnification_pairs_png', '*.png')))    
+    all_tiles_basenames = [os.path.basename(x) for x in all_tiles]
+
+    keyf = extract_r_c_key
+    groups = []
+    for k, g in groupby(all_tiles_basenames, keyf):
+      groups.append(natsorted(list(g)))   # Make sure the png names are sorted so that we can automatically assign 1-16 as position 
+    
+    for group in groups:
+      if len(group) == 17: # Make sure there are 16 higher mag tiles from the lower mag tile
+        for i in range(len(group)):
+          if 'new' not in group[i]:
+            lower_mag_tile_path = os.path.join(os.path.dirname(all_tiles[case]), group[i])
+        for i in range(len(group)):
+          if 'new' in group[i]:
+            higher_mag_tile_path = os.path.join(os.path.dirname(all_tiles[case]), group[i])
+            # input_dir[case].split('/')[6] is the patient ID
+            this_pair_path = os.path.join(dest_dir_train_val, 'p' + str(i) + '_' + pid + '_' + group[i].replace('.png', ''))
+
+            if not os.path.exists(this_pair_path):
+              os.mkdir(this_pair_path)
+            shutil.copy(lower_mag_tile_path, this_pair_path)
+            shutil.copy(higher_mag_tile_path, this_pair_path)
+      
+    dest_dir_train = os.path.join(dest_dir, 'train_ssl2')
+    if not os.path.exists(dest_dir_train):
+      os.makedirs(dest_dir_train)
+    
+    dest_dir_val = os.path.join(dest_dir, 'val_ssl2')
+    if not os.path.exists(dest_dir_val):
+      os.makedirs(dest_dir_val)
+
+    train_val_split(glob(os.path.join(dest_dir_train_val, '*')), dest_dir_train, dest_dir_val)
 
 
 def pil_to_np_rgb(pil_img):

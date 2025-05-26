@@ -36,6 +36,7 @@ from random import randrange
 import cv2 as cv
 import random
 import itertools
+import argparse
 
 mag_level = '40'
 SCALE_FACTOR = 32 
@@ -1639,34 +1640,20 @@ class Tile:
             full_path = os.path.join(dir_this, os.path.basename(tiles_set0[t]))
             os.rename(full_path, full_path.replace('order' + str(t), 'order' + str(this_permutation[t])))
 
-def singleprocess_filtered_images_to_tiles(cohort_name, display=False, save_summary=False, save_data=True, save_top_tiles=False,
+def singleprocess_filtered_images_to_tiles(display=False, save_summary=False, save_data=True, save_top_tiles=False,
                                            html=True, image_num_list=None):
   
   num_training_slides, slide_ids = get_num_training_slides()
   for slide_num in range(num_training_slides):
     img_path = get_filter_image_result(slide_ids[slide_num])
     np_img = open_image_np(img_path)
-
-    if cohort_name == 'nlst':
-      # For NLST data
-      img_path_pid = img_path.split('/')[6]
-      img_path_sid = img_path.split('/')[8].split('-')[0]
-    else:
-      # For TCGA data
-      img_path_pid = os.path.basename(img_path)[0:12]
-      img_path_sid = os.path.basename(img_path)[0:23]
-   
-    slide_path = os.path.join(wsi_root_path, img_path_pid, img_path_sid + '.svs')
-    openslide_obj = openslide.open_slide(slide_path)
-        # CHECK WHETHER IT'S 40X AND HAS 4 LEVELS, also have downsampling factors of 1, 4, 16, 32
-    if int(openslide_obj.level_count) == 4 and int(openslide_obj.properties['aperio.AppMag']) == 40 and math.floor(openslide_obj.level_downsamples[3]) == 32:
-      print("Processing ", slide_path)
-      tile_sum = score_tiles(slide_num, slide_ids[slide_num], np_img)
-      if save_summary:
-        generate_top_tile_summaries(tile_sum, np_img, display=display, save_summary=save_summary)
-      if save_top_tiles:
-        for tile in tile_sum.all_tiles():
-          tile.save_tiles()
+  
+    tile_sum = score_tiles(slide_num, slide_ids[slide_num], np_img)
+    if save_summary:
+      generate_top_tile_summaries(tile_sum, np_img, display=display, save_summary=save_summary)
+    if save_top_tiles:
+      for tile in tile_sum.all_tiles():
+        tile.save_tiles()
 
 def score_tiles(slide_num, slide_id, np_img=None, dimensions=None, small_tile_in_tile=False):
   """
@@ -1767,11 +1754,16 @@ def my_mask_percent(np_img):
 
 
 if __name__ == "__main__":
-  wsi_root_path = 'path_to_wsi_images'
-  wsi_cases_dir = glob_function(os.path.join( wsi_root_path, '*'))
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--path_to_wsi_images', type = str, default = None, help = 'Parent path to all the WSIs')
+  parser.add_argument('--path_to_generated_tiles', type = str, default = None, help = 'Parent path to the generated tiles')
+  args = parser.parse_args()
+
+  wsi_root_path = args.path_to_wsi_images
+  wsi_tiles_root_dir = args.path_to_generated_tiles
+
+  wsi_cases_dir = glob_function(os.path.join(wsi_root_path, '*'))
   wsi_cases_dir = sorted(wsi_cases_dir)
-  wsi_tiles_root_dir = 'path_to_generated_tiles'
-  cohort_name = 'nlst'
   
   for case in range(len(wsi_cases_dir)):
     wsi_tiles_cases_dir = os.path.join(wsi_tiles_root_dir, os.path.basename(wsi_cases_dir[case]))
@@ -1792,5 +1784,5 @@ if __name__ == "__main__":
 
       singleprocess_training_slides_to_images()
       singleprocess_apply_filters_to_images(html = False)
-      singleprocess_filtered_images_to_tiles(cohort_name, display = False, image_num_list = None, save_summary=False, save_data=False, save_top_tiles=True)
+      singleprocess_filtered_images_to_tiles(display = False, image_num_list = None, save_summary=False, save_data=False, save_top_tiles=True)
 

@@ -4,23 +4,15 @@ import torch
 import torch.nn as nn
 import numpy as np
 import torchvision.transforms as transforms
-import torchvision
 from dataloader import DataProcessor
-import torch.nn.functional as F
 import matplotlib.pyplot as plt
-from scipy import interp
 from torch.utils.data import DataLoader
 import os
-from glob import glob
 from model import EncoderDecoderUNET
 from PIL import Image
+import argparse
+from glob import glob
 
-FIGURE_DIR = './saved_figures'
-MODEL_DIR = './saved_models'
-if not os.path.exists(FIGURE_DIR):
-    os.makedirs(FIGURE_DIR)
-if not os.path.exists(MODEL_DIR):
-    os.makedirs(MODEL_DIR)
 
 class TrainModel:
     def __init__(self, num_epochs, batch_size, learning_rate):
@@ -46,7 +38,6 @@ class TrainModel:
     def start_training(self, path_to_train, path_to_valid, inference_images, train_from_interrupted_model):
         train_dataset = DataProcessor(imgs_dir=path_to_train,  transformations=self._transform())
         valid_dataset = DataProcessor(imgs_dir=path_to_valid, transformations=self._transform())
-        inference_dataset = DataProcessor(imgs_dir=inference_images, transformations=self._transform())
 
         print("="*40)
         print("Images for Training:", len(train_dataset))
@@ -54,10 +45,13 @@ class TrainModel:
         print("="*40)
         trainloader = DataLoader(train_dataset, batch_size=self.batch, shuffle=True, drop_last=False, num_workers = 4)
         validloader = DataLoader(valid_dataset, batch_size=self.batch, shuffle=True, drop_last=False, num_workers = 4)
-        inferenceloader = DataLoader(inference_dataset, batch_size=self.batch, shuffle=False, drop_last=False)
+        
+        if inference_images:
+            inference_dataset = DataProcessor(imgs_dir=inference_images, transformations=self._transform())
+            inferenceloader = DataLoader(inference_dataset, batch_size=self.batch, shuffle=False, drop_last=False)
 
         # Instantiate model and other parameters
-        model = EncoderDecoderUNET().to(self.device)
+        model = EncoderDecoderUNET(3, 3).to(self.device)
 
         optimizer = optim.Adam(model.parameters(), lr=self.learning_rate, weight_decay=1e-4)
 
@@ -81,7 +75,7 @@ class TrainModel:
             epoch = checkpoint['epoch']
 
         # Training loop
-        while early_stopping_count <= 10 and epoch <= self.epochs:
+        while early_stopping_count < 10 and epoch < self.epochs:
             print("-"*40)
             epoch += 1
             print('Epoch ', epoch)
@@ -121,27 +115,28 @@ class TrainModel:
                     Image.fromarray(e_pred).save(os.path.join(FIGURE_DIR,'e_pred.png'))
             
                 # Inference loop
-                for data in inferenceloader:
-                    he_color, h_stain_image, e_stain_image = data['he_color'].to(self.device, dtype=torch.float), data['h_stain_image'].to(self.device, dtype=torch.float), data['e_stain_image'].to(self.device, dtype=torch.float)
-                    output_pred_e = model(h_stain_image)
+                if inference_images:
+                    for data in inferenceloader:
+                        he_color, h_stain_image, e_stain_image = data['he_color'].to(self.device, dtype=torch.float), data['h_stain_image'].to(self.device, dtype=torch.float), data['e_stain_image'].to(self.device, dtype=torch.float)
+                        output_pred_e = model(h_stain_image)
 
-                    for i in range(len(he_color)):
-                        he_color = (np.asarray(data['he_color'][i]).transpose(1, 2, 0) * 255).astype(np.uint8)
-                        h_img = (np.asarray(data['h_stain_image'][i]).transpose(1, 2, 0) * 255).astype(np.uint8)
-                        e_img = (np.asarray(data['e_stain_image'][i]).transpose(1, 2, 0) * 255).astype(np.uint8)
-                        e_pred = np.asarray(output_pred_e[i].cpu()).transpose(1, 2, 0)
+                        for i in range(len(he_color)):
+                            he_color = (np.asarray(data['he_color'][i]).transpose(1, 2, 0) * 255).astype(np.uint8)
+                            h_img = (np.asarray(data['h_stain_image'][i]).transpose(1, 2, 0) * 255).astype(np.uint8)
+                            e_img = (np.asarray(data['e_stain_image'][i]).transpose(1, 2, 0) * 255).astype(np.uint8)
+                            e_pred = np.asarray(output_pred_e[i].cpu()).transpose(1, 2, 0)
 
-                        output_dir = os.path.join(FIGURE_DIR, 'inference_results')
-                        if not os.path.exists(output_dir):
-                            os.makedirs(output_dir)
+                            output_dir = os.path.join(FIGURE_DIR, 'inference_results')
+                            if not os.path.exists(output_dir):
+                                os.makedirs(output_dir)
 
-                        Image.fromarray(he_color).save(os.path.join(output_dir, 'he_color.png'))
-                        Image.fromarray(h_img).save(os.path.join(FIGURE_DIR,'h.png'))
-                        Image.fromarray(e_img).save(os.path.join(output_dir, 'e.png'))
+                            Image.fromarray(he_color).save(os.path.join(output_dir, 'he_color.png'))
+                            Image.fromarray(h_img).save(os.path.join(FIGURE_DIR,'h.png'))
+                            Image.fromarray(e_img).save(os.path.join(output_dir, 'e.png'))
 
-                        p = np.percentile(e_pred, 90)
-                        e_pred = np.clip(e_pred * 255.0 / p, 0, 255).astype(np.uint8)
-                        Image.fromarray(e_pred).save(os.path.join(output_dir, 'e_pred.png'))
+                            p = np.percentile(e_pred, 90)
+                            e_pred = np.clip(e_pred * 255.0 / p, 0, 255).astype(np.uint8)
+                            Image.fromarray(e_pred).save(os.path.join(output_dir, 'e_pred.png'))
 
                     
             # Calculate average losses
@@ -164,8 +159,8 @@ class TrainModel:
                  # Update minimum loss
                 valid_loss_min = avg_val_loss
                 early_stopping_count = 0
-                model_to_save_for_downstream = model.resnetEncoderDecoder.encoder
-                torch.save(model_to_save_for_downstream.state_dict(), os.path.join(MODEL_DIR, 'self_trained.pth'))
+                model_to_save_for_downstream = model.unet.encoder
+                torch.save(model_to_save_for_downstream.state_dict(), os.path.join(MODEL_DIR, 'ssl3_trained_model.pth'))
                 
                 model_complete = model
                 torch.save({
@@ -194,14 +189,37 @@ class TrainModel:
 
 
 if __name__ == "__main__":
-    num_epcohs = 200
-    batches = 32
-    learning_rate = 0.0001
-    train_images = 'path_to_train_images'
-    valid_images = 'path_to_validation_images'
-    inference_images = 'path_to_inference_images'
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--path_to_train_images', type = str, default = None, help = 'parent path to the training images')
+    parser.add_argument('--path_to_val_images', type = str, default = None, help = 'parent path to the validation images')
+    parser.add_argument('--path_to_inference_images', type = str, default = None, help = 'parent path to the inference images')
+
+    parser.add_argument('--num_epochs', type = int, default = 200, help = 'the maximum number of training epochs')
+    parser.add_argument('--batches', type = int, default = 32, help = 'batch size')
+    parser.add_argument('--learning_rate', type = float, default = 1e-4, help = 'learning rate')
+    parser.add_argument('--train_from_interrupted_model', type = bool, default = False, help = 'whether to train model from previously saved complete checkpoints')
+
+    args = parser.parse_args()
+
+    num_epcohs = args.num_epochs
+    batches = args.batches
+    learning_rate = args.learning_rate
+    
+    train_images = args.path_to_train_images
+    val_images = args.path_to_val_images
+    inference_images = args.path_to_inference_images
+
+
+    FIGURE_DIR = './saved_figures'
+    MODEL_DIR = './saved_models'
+    if not os.path.exists(FIGURE_DIR):
+        os.makedirs(FIGURE_DIR)
+    if not os.path.exists(MODEL_DIR):
+        os.makedirs(MODEL_DIR)
+
     train_obj = TrainModel(num_epcohs, batches, learning_rate)
-    train_obj.start_training(train_images, valid_images, inference_images, train_from_interrupted_model = False)
+    train_obj.start_training(train_images, val_images, inference_images, train_from_interrupted_model = False)
 
     
 

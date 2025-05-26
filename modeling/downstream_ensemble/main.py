@@ -1,33 +1,22 @@
-from sklearn.metrics import precision_score, accuracy_score, recall_score, \
-    roc_curve, roc_auc_score, auc
-import torch.optim as optim
+
 import torch
-import torch.nn as nn
 import numpy as np
-# from keras.utils import np_utils
 import torchvision.transforms as transforms
 import torchvision
 from dataloader import DataProcessor
 import torch.nn.functional as F
-from itertools import cycle
 import matplotlib.pyplot as plt
-from scipy import interp
 from torch.utils.data import DataLoader
 from sklearn.metrics import confusion_matrix as cm
-from sklearn.metrics import ConfusionMatrixDisplay
 import os
 from glob import glob
 from model import ModifiedResNet, ResNetEncoder
-
-FIGURE_DIR = './saved_figures'
-if not os.path.exists(FIGURE_DIR):
-    os.makedirs(FIGURE_DIR)
+import argparse
 
 class TrainModel:
-    def __init__(self, num_classes, num_epochs, batch_size, fold_index):
+    def __init__(self, num_classes, fold_index):
         self.num_classes = num_classes
-        self.epochs = num_epochs
-        self.batch = batch_size
+        self.batch = 1
         self.fold_index = fold_index
         self.device = self._get_device()
 
@@ -38,19 +27,6 @@ class TrainModel:
         else:
             device = torch.device("cuda")
         return device
-
-    def _get_default_transforms(self):
-        print('Data augmentation')
-        # Note: Pytorch transforms works mostly on PIL Image so we convert it to that format and then apply
-        # transformations. Also, normalize transforms should be applied when the images are converted to tensors.
-        my_transforms = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor(), 
-        transforms.RandomHorizontalFlip(p=0.5), transforms.RandomVerticalFlip(p=0.5),
-        transforms.RandomRotation(degrees=30), 
-        transforms.Resize((224, 224)),
-        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
-        ])
-        
-        return my_transforms
 
     def plot_cnf_matrix(self, fold_index, figures_dir, cm, classes,
                               normalize=False,
@@ -97,15 +73,15 @@ class TrainModel:
         testloader = DataLoader(test_dataset, batch_size=self.batch, shuffle=False, drop_last=False, num_workers = 4)
        
         model1 = ModifiedResNet(self.num_classes).to(self.device)
-        weights = torch.load(os.path.join(ssl1_model_path, 'resnet18_fold' + str(fold_index) + '.pth'), map_location=self.device)
+        weights = torch.load(ssl1_model_path, map_location=self.device)
         model1.load_state_dict(weights)
 
         model2 = ModifiedResNet(self.num_classes).to(self.device)
-        weights = torch.load(os.path.join(ssl2_model_path, 'resnet18_fold' + str(fold_index) + '.pth'), map_location=self.device)
+        weights = torch.load(ssl2_model_path, map_location=self.device)
         model2.load_state_dict(weights)
 
         model3 = ResNetEncoder(self.num_classes).to(self.device)
-        weights = torch.load(os.path.join(ssl3_model_path, 'resnet18_fold' + str(fold_index) + '.pth'), map_location=self.device)
+        weights = torch.load(ssl3_model_path, map_location=self.device)
         model3.load_state_dict(weights)
         # Define the weight combinations to be searched
         weights = np.linspace(0, 1, 11)  # 11 evenly spaced values between 0 and 1
@@ -232,20 +208,28 @@ class TrainModel:
         return f1_score, best_weights
 
 if __name__ == "__main__":
-    # Hyper-param
-    num_epcohs = 200
-    batches = 1
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--path_to_all_images', type = str, default = None, help = 'parent path to all the images')
+    args = parser.parse_args()
+
+    root_dir_for_images = args.path_to_all_images
+
+    FIGURE_DIR = './saved_figures'
+    if not os.path.exists(FIGURE_DIR):
+        os.makedirs(FIGURE_DIR)
+  
     num_classes = 6
     test_f1_scores = []
     best_weights_list = []
     for fold_index in range(5):
-        valid_images = 'path_to_validation_images'
-        test_images = 'path_to_test_images'
-        ssl1_model_path = 'ssl1_model_weights'
-        ssl2_model_path = 'ssl2_model_weights'
-        ssl3_model_path = 'ssl3_model_weights'
+        valid_images = glob(os.path.join(root_dir_for_images, 'fold' + str(fold_index), 'val', '*', '*.png'))
+        test_images = glob(os.path.join(root_dir_for_images, 'fold' + str(fold_index), 'test', '*', '*.png'))
 
-        train_obj = TrainModel(num_classes, num_epcohs, batches, fold_index)
+        ssl1_model_path = os.path.join('./individual_downstream_model_weights', 'proposed_ssl1', 'resnet18_fold' + str(fold_index) + '.pth')
+        ssl2_model_path = os.path.join('./individual_downstream_model_weights', 'proposed_ssl2', 'resnet18_fold' + str(fold_index) + '.pth')
+        ssl3_model_path = os.path.join('./individual_downstream_model_weights', 'proposed_ssl3', 'resnet18_fold' + str(fold_index) + '.pth')
+
+        train_obj = TrainModel(num_classes, fold_index)
         f1_scores, best_weights = train_obj.find_best_weights(valid_images, test_images, ssl1_model_path, ssl2_model_path,ssl3_model_path, fold_index)
         test_f1_scores.append(f1_scores)
         best_weights_list.append(best_weights)

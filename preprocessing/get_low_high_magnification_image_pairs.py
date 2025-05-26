@@ -4,51 +4,20 @@ from __future__ import division
 import glob
 from glob import glob as glob_function
 import math
-import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import openslide
 from openslide import OpenSlideError
 import os
 import PIL
 from PIL import Image
 from PIL import Image, ImageDraw, ImageFont
-from enum import Enum
 import re
-import sys
 import util
-from natsort import natsorted
-import random
-from util import Time
-
-import scipy.ndimage.morphology as sc_morph
-import skimage.color as sk_color
-import skimage.exposure as sk_exposure
-import skimage.feature as sk_feature
-import skimage.filters as sk_filters
-import skimage.future as sk_future
+from util import Time, organize_and_split_ss1_data, organize_and_split_ss2_data
 import skimage.morphology as sk_morphology
-import skimage.segmentation as sk_segmentation
+import argparse
 
-import shutil
-
-import sys
-from random import randrange
-import cv2 as cv
-
-mag_level = '2.5'
-SCALE_FACTOR = 32 
-if mag_level == '2.5':
-  MAG_FACTOR = 16
-  WSI_LEVEL = 2 
-  ROW_TILE_SIZE = 512
-  COL_TILE_SIZE = 512
-elif mag_level == '5':
-  MAG_FACTOR = 4
-  WSI_LEVEL = 1
-  ROW_TILE_SIZE = 1024
-  COL_TILE_SIZE = 1024
-
+SCALE_FACTOR = 32
 FILTER_PAGINATION_SIZE = 50
 FILTER_PAGINATE = True
 TILE_SUMMARY_PAGINATION_SIZE = 50
@@ -1578,7 +1547,7 @@ class Tile:
     img2_resized = np.asarray(pil_img_level2.resize((224, 224)))
     img2_resized = Image.fromarray(img2_resized, 'RGB')
     img_path_level2 = get_tile_image_path(self)
-    img_path_level2 = img_path_level2.replace('w' + str(w) + '-h' + str(h), '2.5x')
+    img_path_level2 = img_path_level2.replace('w' + str(w) + '-h' + str(h), 'lower_mag_tile')
     dir = os.path.dirname(img_path_level2)
     if not os.path.exists(dir):
       os.makedirs(dir)
@@ -1588,49 +1557,28 @@ class Tile:
     for delta_x in range(ROW_TILE_SIZE):
       for delta_y in range(COL_TILE_SIZE):
           if delta_x % (ROW_TILE_SIZE/4) == 0 and delta_y % (COL_TILE_SIZE/4) == 0:
-              new_x = x + delta_x * MAG_FACTOR
-              new_y = y + delta_y * MAG_FACTOR
+              new_x = x + delta_x * DOWNSAMPLE_FACTOR
+              new_y = y + delta_y * DOWNSAMPLE_FACTOR
               current_tile_region = s.read_region((new_x, new_y), int(WSI_LEVEL-1), (w, h))
               pil_img_level = current_tile_region.convert("RGB")
               img_resized = np.asarray(pil_img_level.resize((224, 224)))
               img_resized = Image.fromarray(img_resized, 'RGB')
-              if mag_level == '2.5':
-                img_path = img_path_level2.replace('2.5x', 'new-x' + str(new_x) + '-y' + str(new_y) + '-10x')
-              elif mag_level == '5':
-                img_path = img_path_level2.replace('5x', 'new-x' + str(new_x) + '-y' + str(new_y) + '-20x')
-
+              img_path = img_path_level2.replace('lower_mag_tile', 'new-x' + str(new_x) + '-y' + str(new_y) + '-higher_mag_tile')
               img_resized.save(img_path)
 
-def singleprocess_filtered_images_to_tiles(cohort_name, display=False, save_summary=True, save_data=True, save_top_tiles=True,
+def singleprocess_filtered_images_to_tiles(display=False, save_summary=True, save_data=True, save_top_tiles=True,
                                            html=True, image_num_list=None):
   
   num_training_slides, slide_ids = get_num_training_slides()
-  count = 0
   for slide_num in range(num_training_slides):
     img_path = get_filter_image_result(slide_ids[slide_num])
     np_img = open_image_np(img_path)
-
-    if cohort_name == 'nlst':
-      # For NLST data
-      img_path_pid = img_path.split('/')[6]
-      img_path_sid = img_path.split('/')[8].split('-')[0]
-    else:
-      # For TCGA data
-      img_path_pid = os.path.basename(img_path)[0:12]
-      img_path_sid = os.path.basename(img_path)[0:23]
-      
-    slide_path = os.path.join(wsi_cases_dir, img_path_pid, img_path_sid + '.svs')
-    openslide_obj = openslide.open_slide(slide_path)
    
-    if int(openslide_obj.properties['aperio.AppMag']) == 40:
-      count = count + 1
-      print("Processing ", slide_path)
-      print(count)
-      tile_sum = score_tiles(slide_num, slide_ids[slide_num], np_img)
-      if save_summary:
-        generate_top_tile_summaries(tile_sum, np_img, display=display, save_summary=save_summary)
-      for tile in tile_sum.all_tiles():
-        tile.get_tiles_from_higher_mag_level()
+    tile_sum = score_tiles(slide_num, slide_ids[slide_num], np_img)
+    if save_summary:
+      generate_top_tile_summaries(tile_sum, np_img, display=display, save_summary=save_summary)
+    for tile in tile_sum.all_tiles():
+      tile.get_tiles_from_higher_mag_level()
 
 def score_tiles(slide_num, slide_id, np_img=None, dimensions=None, small_tile_in_tile=False):
   """
@@ -1655,8 +1603,8 @@ def score_tiles(slide_num, slide_id, np_img=None, dimensions=None, small_tile_in
   if np_img is None:
     np_img = open_image_np(img_path)
 
-  row_tile_size = round(ROW_TILE_SIZE*MAG_FACTOR / SCALE_FACTOR)  
-  col_tile_size = round(COL_TILE_SIZE*MAG_FACTOR / SCALE_FACTOR) 
+  row_tile_size = round(ROW_TILE_SIZE*DOWNSAMPLE_FACTOR / SCALE_FACTOR)  
+  col_tile_size = round(COL_TILE_SIZE*DOWNSAMPLE_FACTOR / SCALE_FACTOR) 
 
   num_row_tiles, num_col_tiles = get_num_tiles(h, w, row_tile_size, col_tile_size)
 
@@ -1710,11 +1658,24 @@ def score_tiles(slide_num, slide_id, np_img=None, dimensions=None, small_tile_in
   return tile_sum
 
 if __name__ == "__main__":
-  wsi_cases_path = 'path_to_wsi_images'
-  wsi_cases_dir = glob_function(os.path.join(wsi_cases_path, '*'))
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--wsi_level', type = int, default = 2, help = 'whole slide level to extract the lower magnification tiles from')
+  parser.add_argument('--tile_size', type = int, default = 512, help = 'tile size of the lower magnification tile')
+  parser.add_argument('--downsample_factor', type = int, default = 16, help = 'wsi downsample factor of the lower magnification tile. Usually NLST and TCGA WSIs have 4 magnification levels (0, 1, 2, 3), and the downsampling factors are (1, 4, 16, 32)')
+
+  parser.add_argument('--path_to_wsi_images', type = str, default = None, help = 'Parent path to all the WSIs')
+  parser.add_argument('--path_to_generated_tiles', type = str, default = None, help = 'Parent path to the generated tiles')
+  args = parser.parse_args()
+
+  ROW_TILE_SIZE, COL_TILE_SIZE = args.tile_size, args.tile_size
+  WSI_LEVEL = args.wsi_level
+  DOWNSAMPLE_FACTOR = args.downsample_factor
+  wsi_root_path = args.path_to_wsi_images
+  wsi_tiles_root_dir = os.path.join(args.path_to_generated_tiles, 'raw_data')
+
+  wsi_cases_dir = glob_function(os.path.join(wsi_root_path, '*'))
   wsi_cases_dir = sorted(wsi_cases_dir)
-  wsi_tiles_root_dir = 'path_to_generated_tiles'
-  cohort_name = 'nlst'
+
   for case in range(len(wsi_cases_dir)):
       wsi_tiles_cases_dir = os.path.join(wsi_tiles_root_dir, os.path.basename(wsi_cases_dir[case]))   
       if not os.path.exists(wsi_tiles_cases_dir):
@@ -1727,16 +1688,19 @@ if __name__ == "__main__":
       tile_summary_on_original_dir = os.path.join(base_dir, "tile_summary_on_original_" + "png")
       tile_data_dir = os.path.join(base_dir, "tile_data")
 
-      top_tiles_suffix = mag_level + "x_top_tile_summary"
+      top_tiles_suffix = "top_tile_summary"
       top_tiles_dir = os.path.join(base_dir, top_tiles_suffix + "_" + "png")
       top_tiles_on_original_dir = os.path.join(base_dir, top_tiles_suffix + "_on_original_" + "png")
 
-      tile_dir = os.path.join(base_dir, "all_magnifications_tiles_" + "png")
+      tile_dir = os.path.join(base_dir, "low_high_magnification_pairs_" + "png")
       if not os.path.exists(tile_dir):
           os.makedirs(tile_dir)
       
       singleprocess_training_slides_to_images()
       singleprocess_apply_filters_to_images(html = False)
-      singleprocess_filtered_images_to_tiles(cohort_name, display = False, image_num_list = None, save_summary=False, save_data=False, save_top_tiles=True)
-
-
+      singleprocess_filtered_images_to_tiles(display = False, image_num_list = None, save_summary=False, save_data=False, save_top_tiles=True)
+  
+  # Now organize the data and do train-val split
+  print('Done tiling. Now organizing.')
+  organize_and_split_ss1_data(wsi_tiles_root_dir, args.path_to_generated_tiles)
+  organize_and_split_ss2_data(wsi_tiles_root_dir, args.path_to_generated_tiles)

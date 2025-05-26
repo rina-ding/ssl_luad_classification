@@ -7,18 +7,12 @@ from model import ModifiedResNet
 from dataloader import DataProcessor
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
-from scipy import interp
 from torch.utils.data import DataLoader
 from sklearn.metrics import confusion_matrix as cm
 import os
+import argparse
 from glob import glob
 
-FIGURE_DIR = './saved_figures'
-MODEL_DIR = './saved_models'
-if not os.path.exists(FIGURE_DIR):
-    os.makedirs(FIGURE_DIR)
-if not os.path.exists(MODEL_DIR):
-    os.makedirs(MODEL_DIR)
 class TrainModel:
     def __init__(self, num_classes, num_epochs, batch_size, learning_rate):
         self.num_classes = num_classes
@@ -43,8 +37,11 @@ class TrainModel:
         return custom_transforms
 
     def start_training(self, path_to_train, path_to_valid, train_from_interrupted_model):
-        train_dataset = DataProcessor(imgs_dir=path_to_train, transformations=self._get_default_transforms())
-        valid_dataset = DataProcessor(imgs_dir=path_to_valid, transformations=self._get_default_transforms())
+        train_images = glob(os.path.join(path_to_train, '*'))
+        val_images = glob(os.path.join(path_to_valid, '*'))
+
+        train_dataset = DataProcessor(imgs_dir=train_images, transformations=self._get_default_transforms())
+        valid_dataset = DataProcessor(imgs_dir=val_images, transformations=None)
        
         print("="*40)
         print("Images for Training:", len(train_dataset))
@@ -82,7 +79,7 @@ class TrainModel:
             epoch = checkpoint['epoch']
             metrics['f1'] = checkpoint['val_f1_all']
 
-        while early_stopping_count <= 10 and epoch < self.epochs:
+        while early_stopping_count < 10 and epoch < self.epochs:
             print("-"*40)
             print('Epoch ', epoch)
             running_train_loss, running_val_loss = 0.0, 0.0
@@ -158,7 +155,7 @@ class TrainModel:
                 print("-" * 40)
                
                 model_to_save_downstream = model.backbone
-                torch.save(model_to_save_downstream.state_dict(), os.path.join(MODEL_DIR, 'self_trained.pth'))
+                torch.save(model_to_save_downstream.state_dict(), os.path.join(MODEL_DIR, 'ssl2_trained_model.pth'))
 
                 model_complete = model
                 torch.save({
@@ -201,12 +198,31 @@ class TrainModel:
             epoch += 1          
 
 if __name__ == "__main__":
-    # Hyper-param
-    num_epcohs = 200
-    batches = 32
-    learning_rate = 0.0001
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--path_to_train_images', type = str, default = None, help = 'parent path to the training images')
+    parser.add_argument('--path_to_val_images', type = str, default = None, help = 'parent path to the validation images')
+    parser.add_argument('--num_epochs', type = int, default = 200, help = 'the maximum number of training epochs')
+    parser.add_argument('--batches', type = int, default = 32, help = 'batch size')
+    parser.add_argument('--learning_rate', type = float, default = 1e-4, help = 'learning rate')
+    parser.add_argument('--train_from_interrupted_model', type = bool, default = False, help = 'whether to train model from previously saved complete checkpoints')
+
+    args = parser.parse_args()
+
+    num_epcohs = args.num_epochs
+    batches = args.batches
+    learning_rate = args.learning_rate
+    
+    train_images = args.path_to_train_images
+    val_images = args.path_to_val_images
+
+    FIGURE_DIR = './saved_figures'
+    MODEL_DIR = './saved_models'
+    if not os.path.exists(FIGURE_DIR):
+        os.makedirs(FIGURE_DIR)
+    if not os.path.exists(MODEL_DIR):
+        os.makedirs(MODEL_DIR)
+
     num_classes = 16
-    train_images = 'path_to_train_images'
-    valid_images = 'path_to_validation_images'    
     train_obj = TrainModel(num_classes, num_epcohs, batches, learning_rate)
-    train_obj.start_training(train_images, valid_images, train_from_interrupted_model = False)
+    train_obj.start_training(train_images, val_images, train_from_interrupted_model = False)

@@ -3,6 +3,8 @@ import torch
 from torch.utils.data import Dataset
 from PIL import Image
 import random
+import torchvision.transforms as transforms
+
 
 class DataProcessor(Dataset):
     def __init__(self, imgs_dir, channel, transformations=None):
@@ -30,6 +32,11 @@ class DataProcessor(Dataset):
 
         if self.transformations:
             img_normed = self.transformations(img)
+        else:      
+            basic_transforms = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor(),   
+                                                   transforms.Resize((224, 224)),                  
+            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])])
+            img_normed = basic_transforms(img)
 
         if self.channel == 6:
             return {"image": np.concatenate((img_normed, img_normed), axis = 0), "label": label}
