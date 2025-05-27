@@ -3,8 +3,8 @@ import torch.optim as optim
 import torch
 import numpy as np
 import torchvision.transforms as transforms
-from model_byol import BYOL
-from dataloader_byol import DataProcessor
+from model import BYOL
+from dataloader import DataProcessor
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from sklearn.metrics import confusion_matrix as cm
@@ -43,8 +43,10 @@ class TrainModel:
         return my_transforms
 
     def start_training(self, path_to_train, path_to_valid, train_from_interrupted_model):
-        train_dataset = DataProcessor(imgs_dir=path_to_train, transformations=self._get_default_transforms())
-        valid_dataset = DataProcessor(imgs_dir=path_to_valid, transformations=self._get_default_transforms())
+        train_images = glob(os.path.join(path_to_train, '*'))
+        val_images = glob(os.path.join(path_to_valid, '*'))
+        train_dataset = DataProcessor(imgs_dir=train_images, transformations=self._get_default_transforms())
+        valid_dataset = DataProcessor(imgs_dir=val_images, transformations=self._get_default_transforms())
 
         print("="*40)
         print("Images for Training:", len(train_dataset))

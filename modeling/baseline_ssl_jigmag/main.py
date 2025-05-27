@@ -37,8 +37,10 @@ class TrainModel:
         return custom_transforms
 
     def start_training(self, path_to_train, path_to_valid, train_from_interrupted_model):
-        train_dataset = DataProcessor(imgs_dir=path_to_train, transformations=self._get_default_transforms())
-        valid_dataset = DataProcessor(imgs_dir=path_to_valid, transformations=self._get_default_transforms())
+        train_images = glob(os.path.join(path_to_train, '*'))
+        val_images = glob(os.path.join(path_to_valid, '*'))
+        train_dataset = DataProcessor(imgs_dir=train_images, transformations=self._get_default_transforms())
+        valid_dataset = DataProcessor(imgs_dir=val_images, transformations=self._get_default_transforms())
         
         print("="*40)
         print("Images for Training:", len(train_dataset))
@@ -225,5 +227,5 @@ if __name__ == "__main__":
         os.makedirs(MODEL_DIR)
 
     num_classes = 24
-    train_obj = TrainModel(num_classes, num_epcohs, batches)
+    train_obj = TrainModel(num_classes, num_epcohs, batches, learning_rate)
     train_obj.start_training(train_images, val_images, train_from_interrupted_model = False)
