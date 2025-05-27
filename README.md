@@ -99,12 +99,20 @@ After running this script, you should get output data in the following structure
       │   ├── <path_to_image1.png>
       │   ├── <path_to_image2.png>
       │   ├── ...
+  │   ├── <path_to_he_stain_images>
+      │   ├── <path_to_image1.png>
+      │   ├── <path_to_image2.png>
+      │   ├── ...
   ├── val       
   │   ├── <path_to_h_stain_images>
       │   ├── <path_to_image1.png>
       │   ├── <path_to_image2.png>
       │   ├── ...            
   │   ├── <path_to_e_stain_images>
+      │   ├── <path_to_image1.png>
+      │   ├── <path_to_image2.png>
+      │   ├── ...
+  │   ├── <path_to_he_stain_images>
       │   ├── <path_to_image1.png>
       │   ├── <path_to_image2.png>
       │   ├── ...
