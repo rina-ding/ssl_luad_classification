@@ -39,7 +39,7 @@ Each dataset's folder structure should be:
 
 - SSL 1 and 2 data prep: 
 ```
-cd ./preprocessing
+cd preprocessing
 ```
 
 ```
@@ -72,7 +72,7 @@ After running this script, you should get output data in the following structure
 
 - SSL 3 data prep:
 ```
-cd ./preprocessing
+cd preprocessing
 ```
 
 First run `generate_tiles.py` to get tiles from the WSIs.
@@ -116,7 +116,7 @@ After running this script, you should get output data in the following structure
 #### For SSL 1:
 
 ```
-cd ./modeling/proposed_ssl1
+cd modeling/proposed_ssl1
 ```
 
 ```
@@ -130,7 +130,7 @@ CUDA_VISIBLE_DEVICES=0 python main.py --path_to_train_images <> --path_to_val_im
 #### For SSL 2:
 
 ```
-cd ./modeling/proposed_ssl2
+cd modeling/proposed_ssl2
 ```
 
 ```
@@ -144,7 +144,7 @@ CUDA_VISIBLE_DEVICES=0 python main.py --path_to_train_images <> --path_to_val_im
 #### For SSL 3:
 
 ```
-cd ./modeling/proposed_ssl3
+cd modeling/proposed_ssl3
 ```
 
 ```
@@ -183,7 +183,7 @@ Since we have 3 SSL-pretrained models, we will train 3 different downstream mode
 For each downstream model, do:
 
 ```
-cd ./modeling/downstream
+cd modeling/downstream
 ```
 
 ```
@@ -296,7 +296,7 @@ First, you need to put the 3 downstream model weights into a folder called `indi
 Then do:
 
 ```
-cd ./modeling/downstream_ensemble
+cd modeling/downstream_ensemble
 ```
 
 ```
