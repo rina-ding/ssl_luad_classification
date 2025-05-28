@@ -54,7 +54,7 @@ python get_low_high_magnification_image_pairs.py --wsi_level 2 --tile_size 512 -
 `path_to_wsi_images` is the parent path to the WSIs, structured in the format mentioned above.
 `path_to_generated_tiles` is the parent path to the generated tiles.
 
-After running this script, you should get output data in the following structure within your specified `path_to_generated_tiles` (specifically under `/<path_to_generated_tiles>/train_ssl1` for training data and `/<path_to_generated_tiles>/val_ssl1` for SSL1 and similarly for SSL2):
+After running this script, you should get output data (80% training and 20% validation) in the following structure within your specified `path_to_generated_tiles` (specifically under `/<path_to_generated_tiles>/train_ssl1` for training data and `/<path_to_generated_tiles>/val_ssl1` for SSL1 and similarly for SSL2):
 
 ```
   ├── train                   
@@ -87,7 +87,7 @@ python stain_separation.py ----path_to_input_tiles <> ----path_to_output_tiles
 
 where `path_to_input_tiles` should be the same path as the `path_to_generated_tiles` from the `generate_tile.py` step.
 
-After running this script, you should get output data in the following structure within your specified `path_to_output_tiles` (specifically under `/<path_to_output_tiles>/train` for training data and `/<path_to_output_tiles>/val` for validation data):
+After running this script, you should get output data (80% training and 20% validation) in the following structure within your specified `path_to_output_tiles` (specifically under `/<path_to_output_tiles>/train` for training data and `/<path_to_output_tiles>/val` for validation data):
 
 ```
   ├── train                   
@@ -117,7 +117,6 @@ After running this script, you should get output data in the following structure
       │   ├── <path_to_image2.png>
       │   ├── ...
 ```
-
 
 ### Modeling
 
