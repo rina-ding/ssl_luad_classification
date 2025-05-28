@@ -51,8 +51,11 @@ An example command for when using WSIs that have 40x objective magnification:
 python get_low_high_magnification_image_pairs.py --wsi_level 2 --tile_size 512 --downsample_factor 16 --path_to_wsi_images <> --path_to_generated_tiles <>
 ```
 
+`wsi_level` is the whole slide level to extract the lower magnification tiles from
+`tile_size` is the tile size of the lower magnification tile
+`downsample_factor`: wsi downsample factor of the lower magnification tile. Usually NLST and TCGA WSIs have 4 magnification levels (0, 1, 2, 3), and the downsampling factors are (1, 4, 16, 32)
 `path_to_wsi_images` is the parent path to the WSIs, structured in the format mentioned above.
-`path_to_generated_tiles` is the parent path to the generated tiles.
+`path_to_generated_tiles` is the parent path to the tiles generated from this script.
 
 After running this script, you should get output data (80% training and 20% validation) in the following structure within your specified `path_to_generated_tiles` (specifically under `/<path_to_generated_tiles>/train_ssl1` for training data and `/<path_to_generated_tiles>/val_ssl1` for SSL1 and similarly for SSL2):
 
