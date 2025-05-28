@@ -78,7 +78,7 @@ After running this script, you should get output data (80% training and 20% vali
 
 ```
 
-If your dataset contains both 40x and 20x WSIs, you need to put the 40x cases in a folder and the 20x ones in another folder and run `get_low_high_magnification_image_pairs.py` separately for each folder. In that case, please use the same `--path_to_generated_tiles` so that all the output data from 40x and 20x will be stored in one place for modeling later.
+If your dataset contains both 40x and 20x WSIs, you need to put the 40x cases in a folder and the 20x ones in another folder and run `get_low_high_magnification_image_pairs.py` separately for each folder. In that case, please use the same `--path_to_generated_tiles` for them so that all the output data from 40x and 20x will be stored in one place for modeling later.
 
 ```
 ├── 40x      
@@ -136,6 +136,8 @@ After running this script, you should get output data (80% training and 20% vali
       │   ├── <path_to_image2.png>
       │   ├── ...
 ```
+
+If your dataset contains both 40x and 20x WSIs, you need to put the 40x cases in a folder and the 20x ones in another folder and run scripts separately for each folder. In that case, please use the same `--path_to_generated_tiles` for them so that all the output data from 40x and 20x will be stored in one place for modeling later.
 
 ### Modeling
 
