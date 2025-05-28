@@ -51,9 +51,14 @@ An example command for when using WSIs that have 40x objective magnification:
 python get_low_high_magnification_image_pairs.py --wsi_level 2 --tile_size 512 --downsample_factor 16 --path_to_wsi_images <> --path_to_generated_tiles <>
 ```
 
+An example command for when using WSIs that have 20x objective magnification:
+```
+python get_low_high_magnification_image_pairs.py --wsi_level 1 --tile_size 1024 --downsample_factor 4 --path_to_wsi_images <> --path_to_generated_tiles <>
+```
+
 `wsi_level` is the whole slide level to extract the lower magnification tiles from
 `tile_size` is the tile size of the lower magnification tile
-`downsample_factor`: wsi downsample factor of the lower magnification tile. Usually NLST and TCGA WSIs have 4 magnification levels (0, 1, 2, 3), and the downsampling factors are (1, 4, 16, 32)
+`downsample_factor`: wsi downsample factor of the lower magnification tile. Usually NLST and TCGA WSIs that have 40x objective magnification have 4 magnification levels (0, 1, 2, 3), and the downsampling factors are (1, 4, 16, 32), so a tile from level 2 will have downsampling factor of 16.
 `path_to_wsi_images` is the parent path to the WSIs, structured in the format mentioned above.
 `path_to_generated_tiles` is the parent path to the tiles generated from this script.
 
@@ -71,6 +76,17 @@ After running this script, you should get output data (80% training and 20% vali
       │   ├── <path_to_high_magnification_image.png>
       ├── ...
 
+```
+
+If your dataset contains both 40x and 20x WSIs, you need to put the 40x cases in a folder and the 20x ones in another folder and run `get_low_high_magnification_image_pairs.py` separately for each folder. In that case, please use the same `--path_to_generated_tiles` so that all the output data from 40x and 20x will be stored in one place for modeling later.
+
+```
+├── 40x      
+  ├── <patient_id>                   
+  │   ├── <slide_id>   
+├── 20x      
+  ├── <patient_id>                   
+  │   ├── <slide_id>   
 ```
 
 - SSL 3 data prep:

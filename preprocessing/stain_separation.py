@@ -272,10 +272,10 @@ if __name__ == "__main__":
     input_dir = natsorted(glob_function(os.path.join(input_root_path, '*', 'tiles_png')))
     dest_dir = args.path_to_output_tiles
  
-    # for i in range(len(input_dir)):
-    #     print(i)
-    #     print(input_dir[i])
-    #     run_stain_separation_H_E_stain(input_dir[i])
+    for i in range(len(input_dir)):
+        print(i)
+        print(input_dir[i])
+        run_stain_separation_H_E_stain(input_dir[i])
     
     input_dir_he = natsorted(glob_function(os.path.join(input_root_path, '*', 'tiles_png')))
     input_dir_h = natsorted(glob_function(os.path.join(input_root_path, '*', 'tiles_png_H_stain')))
